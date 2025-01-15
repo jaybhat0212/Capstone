@@ -6,81 +6,50 @@
 //
 
 import SwiftUI
-import CoreData
 
 struct ContentView: View {
-    @Environment(\.managedObjectContext) private var viewContext
-
-    @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \Item.timestamp, ascending: true)],
-        animation: .default)
-    private var items: FetchedResults<Item>
+    @EnvironmentObject var healthStoreManager: HealthStoreManager
 
     var body: some View {
-        NavigationView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp!, formatter: itemFormatter)")
-                    } label: {
-                        Text(item.timestamp!, formatter: itemFormatter)
-                    }
-                }
-                .onDelete(perform: deleteItems)
+        ScrollView {
+            VStack(spacing: 20) {
+                HealthDataCard(title: "Steps", value: "\(Int(healthStoreManager.steps))")
+                HealthDataCard(title: "Speed", value: String(format: "%.2f m/s", healthStoreManager.speed))
+                HealthDataCard(title: "Body Weight", value: String(format: "%.2f kg", healthStoreManager.bodyWeight))
+                HealthDataCard(title: "Resting VO2", value: String(format: "%.2f ml/(kg*min)", healthStoreManager.restingVO2))
+                HealthDataCard(title: "HRV", value: String(format: "%.2f ms", healthStoreManager.heartRateVariability))
+                HealthDataCard(title: "Elevation Change", value: String(format: "%.2f flights", healthStoreManager.elevationChange))
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-            Text("Select an item")
+            .padding()
         }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(context: viewContext)
-            newItem.timestamp = Date()
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-            }
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            offsets.map { items[$0] }.forEach(viewContext.delete)
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-            }
+        .onAppear {
+            healthStoreManager.checkAuthorization()
         }
     }
 }
 
-private let itemFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateStyle = .short
-    formatter.timeStyle = .medium
-    return formatter
-}()
+struct HealthDataCard: View {
+    let title: String
+    let value: String
 
-#Preview {
-    ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.white)
+            Text(value)
+                .font(.title)
+                .foregroundColor(.white)
+        }
+        .padding()
+        .background(Color.blue)
+        .cornerRadius(10)
+        .shadow(radius: 5)
+    }
+}
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView().environmentObject(HealthStoreManager())
+    }
 }
