@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -15,7 +15,32 @@
 		7B1E459B2C4AF42D00D251CD /* NRG.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 7B1E45992C4AF42D00D251CD /* NRG.xcdatamodeld */; };
 		7B1E45A92C4AFCE400D251CD /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B1E45A82C4AFCE400D251CD /* AppDelegate.swift */; };
 		7B1E45AB2C4AFCFF00D251CD /* HealthStoreManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B1E45AA2C4AFCFF00D251CD /* HealthStoreManager.swift */; };
+		7BDF473E2D387BB80087D4A9 /* NRG Watch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 7BDF47312D387BB40087D4A9 /* NRG Watch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		7BDF473C2D387BB80087D4A9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7B1E45832C4AF42900D251CD /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7BDF47302D387BB40087D4A9;
+			remoteInfo = "NRG Watch Watch App";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		7BDF473F2D387BB80087D4A9 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				7BDF473E2D387BB80087D4A9 /* NRG Watch Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		7B1E458B2C4AF42900D251CD /* NRG.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NRG.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -28,10 +53,22 @@
 		7B1E45A72C4AF9AC00D251CD /* NRG.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NRG.entitlements; sourceTree = "<group>"; };
 		7B1E45A82C4AFCE400D251CD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7B1E45AA2C4AFCFF00D251CD /* HealthStoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthStoreManager.swift; sourceTree = "<group>"; };
+		7BDF47312D387BB40087D4A9 /* NRG Watch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "NRG Watch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		7BDF47322D387BB40087D4A9 /* NRG Watch Watch App */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "NRG Watch Watch App"; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		7B1E45882C4AF42900D251CD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7BDF472E2D387BB40087D4A9 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -45,6 +82,7 @@
 			isa = PBXGroup;
 			children = (
 				7B1E458D2C4AF42900D251CD /* NRG */,
+				7BDF47322D387BB40087D4A9 /* NRG Watch Watch App */,
 				7B1E458C2C4AF42900D251CD /* Products */,
 			);
 			sourceTree = "<group>";
@@ -53,6 +91,7 @@
 			isa = PBXGroup;
 			children = (
 				7B1E458B2C4AF42900D251CD /* NRG.app */,
+				7BDF47312D387BB40087D4A9 /* NRG Watch Watch App.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -91,14 +130,38 @@
 				7B1E45872C4AF42900D251CD /* Sources */,
 				7B1E45882C4AF42900D251CD /* Frameworks */,
 				7B1E45892C4AF42900D251CD /* Resources */,
+				7BDF473F2D387BB80087D4A9 /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7BDF473D2D387BB80087D4A9 /* PBXTargetDependency */,
+			);
+			name = NRG;
+			productName = NRG;
+			productReference = 7B1E458B2C4AF42900D251CD /* NRG.app */;
+			productType = "com.apple.product-type.application";
+		};
+		7BDF47302D387BB40087D4A9 /* NRG Watch Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7BDF47422D387BB80087D4A9 /* Build configuration list for PBXNativeTarget "NRG Watch Watch App" */;
+			buildPhases = (
+				7BDF472D2D387BB40087D4A9 /* Sources */,
+				7BDF472E2D387BB40087D4A9 /* Frameworks */,
+				7BDF472F2D387BB40087D4A9 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = NRG;
-			productName = NRG;
-			productReference = 7B1E458B2C4AF42900D251CD /* NRG.app */;
+			fileSystemSynchronizedGroups = (
+				7BDF47322D387BB40087D4A9 /* NRG Watch Watch App */,
+			);
+			name = "NRG Watch Watch App";
+			packageProductDependencies = (
+			);
+			productName = "NRG Watch Watch App";
+			productReference = 7BDF47312D387BB40087D4A9 /* NRG Watch Watch App.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -108,11 +171,14 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1540;
+				LastSwiftUpdateCheck = 1620;
 				LastUpgradeCheck = 1540;
 				TargetAttributes = {
 					7B1E458A2C4AF42900D251CD = {
 						CreatedOnToolsVersion = 15.4;
+					};
+					7BDF47302D387BB40087D4A9 = {
+						CreatedOnToolsVersion = 16.2;
 					};
 				};
 			};
@@ -130,6 +196,7 @@
 			projectRoot = "";
 			targets = (
 				7B1E458A2C4AF42900D251CD /* NRG */,
+				7BDF47302D387BB40087D4A9 /* NRG Watch Watch App */,
 			);
 		};
 /* End PBXProject section */
@@ -141,6 +208,13 @@
 			files = (
 				7B1E45962C4AF42D00D251CD /* Preview Assets.xcassets in Resources */,
 				7B1E45932C4AF42D00D251CD /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7BDF472F2D387BB40087D4A9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -160,7 +234,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7BDF472D2D387BB40087D4A9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7BDF473D2D387BB80087D4A9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7BDF47302D387BB40087D4A9 /* NRG Watch Watch App */;
+			targetProxy = 7BDF473C2D387BB80087D4A9 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		7B1E459C2C4AF42D00D251CD /* Debug */ = {
@@ -346,6 +435,78 @@
 			};
 			name = Release;
 		};
+		7BDF47402D387BB80087D4A9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = "NRG Watch Watch App/NRG Watch Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"NRG Watch Watch App/Preview Content\"";
+				DEVELOPMENT_TEAM = N53EFCPR92;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "NRG-Watch-Watch-App-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "NRG Watch";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app uses your health data to provide fitness insights and recommendations.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app uses your location to fetch the current temperature.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "This app uses motion data to track your running speed and gradient during workouts.";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.JayBhatasana.NRG;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.JayBhatasana.NRG.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.2;
+			};
+			name = Debug;
+		};
+		7BDF47412D387BB80087D4A9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = "NRG Watch Watch App/NRG Watch Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"NRG Watch Watch App/Preview Content\"";
+				DEVELOPMENT_TEAM = N53EFCPR92;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "NRG-Watch-Watch-App-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "NRG Watch";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app uses your health data to provide fitness insights and recommendations.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app uses your location to fetch the current temperature.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "This app uses motion data to track your running speed and gradient during workouts.";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.JayBhatasana.NRG;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.JayBhatasana.NRG.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.2;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -363,6 +524,15 @@
 			buildConfigurations = (
 				7B1E459F2C4AF42D00D251CD /* Debug */,
 				7B1E45A02C4AF42D00D251CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7BDF47422D387BB80087D4A9 /* Build configuration list for PBXNativeTarget "NRG Watch Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7BDF47402D387BB80087D4A9 /* Debug */,
+				7BDF47412D387BB80087D4A9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
