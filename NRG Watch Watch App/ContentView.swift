@@ -32,8 +32,11 @@ struct ContentView: View {
         } else {
             HomeView(
                 
-                startTracking: startTracking
-                
+                startTracking: startTracking,
+                elapsedTime: $elapsedTime,
+                runningSpeed: $runningSpeed,
+                heartRate: $heartRate // ✅ Pass heart rate as a binding
+
             )
         }
     }
@@ -201,6 +204,10 @@ struct MainView: View {
 
 struct HomeView: View {
     let startTracking: () -> Void
+    @Binding var elapsedTime: TimeInterval
+    @Binding var runningSpeed: Double?
+    @Binding var heartRate: Double?
+    
     @State private var isAnimating = false
     @State private var navigate = false
     
@@ -261,41 +268,196 @@ struct HomeView: View {
             }
             
             .navigationDestination(isPresented: $navigate) {
-                            TrackingView()
-                        }
+                TrackingTabView(elapsedTime: $elapsedTime, runningSpeed: $runningSpeed, heartRate: $heartRate) // ✅ Now loads swipeable pages
+            }
+
         }
     }
 }
 
 struct TrackingView: View {
+    @Binding var elapsedTime: TimeInterval
+    @Binding var runningSpeed: Double?
+    @Binding var heartRate: Double?
+
+    @State private var navigateToConsume = false // ✅ Controls navigation
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.black.edgesIgnoringSafeArea(.all) // ✅ Background
+
+                VStack {
+                    Spacer().frame(height: 50) // ✅ Restore spacing
+
+                    // **Top Centered Logo**
+                    Image("NRGRun")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 80, height: 80)
+                        .padding(.top, -30)
+
+                    Spacer() // ✅ Ensures correct spacing before elapsed time
+
+                    // **Elapsed Time Display**
+                    HStack {
+                        Text("Elapsed Time:")
+                            .foregroundColor(.white)
+                            .font(.system(size: 16, weight: .medium))
+
+                        Text(formatTime(elapsedTime)) // ⏱️ Live stopwatch
+                            .foregroundColor(.white)
+                            .font(.system(size: 17, weight: .bold))
+                            .monospacedDigit()
+                    }
+                    .padding(.top, 10)
+
+                    Spacer() // ✅ Adds spacing before first divider
+
+                    // **First Divider**
+                    Divider()
+                        .background(Color.white.opacity(0.7))
+                        .frame(height: 1)
+                        .padding(.horizontal, 20)
+
+                    // **Pace Display**
+                    HStack {
+                        Text("Pace:")
+                            .foregroundColor(.white)
+                            .font(.system(size: 16, weight: .medium))
+
+                        Text(runningSpeed != nil ? "\(String(format: "%.2f", runningSpeed!)) m/s" : "Loading...")
+                            .foregroundColor(.white)
+                            .font(.system(size: 17, weight: .bold))
+                            .monospacedDigit()
+                    }
+                    .padding(.top, 5)
+
+                    // **Second Divider**
+                    Divider()
+                        .frame(height: 1)
+                        .overlay(Color.white)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 5)
+
+                    // **Heart Rate Display**
+                    HStack {
+                        Text("Heart Rate:")
+                            .foregroundColor(.white)
+                            .font(.system(size: 16, weight: .medium))
+
+                        Text(heartRate != nil ? "\(String(format: "%.0f", heartRate!)) bpm" : "Loading...")
+                            .foregroundColor(.white)
+                            .font(.system(size: 17, weight: .bold))
+                            .monospacedDigit()
+                    }
+                    .padding(.top, 5)
+
+                    Spacer() // ✅ Pushes everything down to maintain balance
+
+                    // **Hidden Navigation Link (Auto-Navigate after 15s)**
+                    NavigationLink(destination: ConsumeView(), isActive: $navigateToConsume) { EmptyView() }
+                        .hidden()
+                }
+            }
+        }
+        .onAppear {
+            checkElapsedTime() // ✅ Check elapsed time when view loads
+        }
+        .onChange(of: elapsedTime) { _ in
+            checkElapsedTime() // ✅ Check elapsed time continuously
+        }
+    }
+
+    // **Function to Check If Time Reaches 15 Seconds**
+    func checkElapsedTime() {
+        if elapsedTime >= 15 {
+            navigateToConsume = true // ✅ Navigate when time reaches 15s
+        }
+    }
+
+    // **Function to Format Elapsed Time (MM:SS)**
+    func formatTime(_ interval: TimeInterval) -> String {
+        let minutes = Int(interval) / 60
+        let seconds = Int(interval) % 60
+        return String(format: "%02d:%02d", minutes, seconds) // ✅ Formats as MM:SS
+    }
+}
+struct ConsumeView: View {
     var body: some View {
         ZStack {
             Color.black.edgesIgnoringSafeArea(.all) // Background
 
             VStack {
-                Spacer().frame(height: 10) // Add space from top
-                
-                // **Top Centered Logo**
-                Image("NRGRun") // Make sure this matches the asset name
+                Image("NRGRun")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 80, height: 80) // Adjust size
-                    .padding(.top, -30)
-                
-                Spacer() // Pushes everything else down
-                
-                
-                HStack {
-                    Spacer() // Pushes the icon to the right
-                    Image("NRGHeart") // Ensure correct asset name in Xcode
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 40, height: 40) // Adjust size
-                        .padding(.trailing, 15) // Right padding
-                        .padding(.bottom, 15) // Bottom padding
-                }
+                    .frame(width: 100, height: 100) // ✅ Adjust size as needed
+                    .padding(.top, -20)
+
+                Text("Time to take a gel pack")
+                    .foregroundColor(.white)
+                    .font(.system(size: 15, weight: .medium))
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 25)
             }
         }
+    }
+}
+
+struct FinishView: View {
+    var body: some View {
+        ZStack {
+            Color.black.edgesIgnoringSafeArea(.all) // ✅ Background
+
+            VStack {
+                Spacer() // ✅ Pushes content down to keep layout balanced
+
+                // **Finish Button (Identical to Start, but says Finish)**
+                Button(action: {
+                    WKInterfaceDevice.current().play(.success) // ✅ Haptic Feedback
+                }) {
+                    ZStack {
+                        Circle() // Grey Circular Background
+                            .fill(Color.gray.opacity(0.1))
+                            .frame(width: 120, height: 120)
+
+                        Image(systemName: "flag.fill") // ✅ Finish Icon
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 65, height: 65)
+                            .foregroundColor(Color.fromHex("#00FFC5"))
+                            .scaleEffect(1.0)
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                Text("FINISH")
+                    .font(.system(size: 27, weight: .bold))
+                    .bold()
+                    .foregroundColor(.white)
+                    .padding(.top, 1)
+
+                Spacer() // ✅ Ensures the button stays centered properly
+            }
+        }
+    }
+}
+
+struct TrackingTabView: View {
+    @Binding var elapsedTime: TimeInterval
+    @Binding var runningSpeed: Double?
+    @Binding var heartRate: Double?
+
+    var body: some View {
+        TabView {
+            TrackingView(elapsedTime: $elapsedTime, runningSpeed: $runningSpeed, heartRate: $heartRate)
+                .tabItem { Text("Tracking") }
+
+            FinishView() // ✅ Swipe right to see Finish Page
+                .tabItem { Text("Finish") }
+        }
+        .tabViewStyle(PageTabViewStyle()) // ✅ Enables swipe gestures
     }
 }
 
