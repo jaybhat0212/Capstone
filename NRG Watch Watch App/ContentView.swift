@@ -1,494 +1,274 @@
+//
+//  ContentView.swift
+//  NRG
+//
+//  High-level app flow:
+//
+//  1. If metrics are not ready (first launch), show FirstLaunchView.
+//     -> Then leads to StartScreen.
+//
+//  2. StartScreen -> press "Start" -> startTracking() -> show MainTabView.
+//
+//  3. MainTabView has two pages:
+//     - Page 0: HomeView (time, pace, HRV, gradient, last gel, manual 3s hold => SupplementConsumedView)
+//     - Page 1: StopRunView (3s hold to end run => back to StartScreen)
+//
+//  4. If any of the 3 rules triggers a gel notification, navigate to SupplementView (3s hold) -> SupplementConsumedView.
+//
+//  5. SupplementConsumedView:
+//     - Displays "Gel intake recorded" with 5s auto-return to HomeView (finalizing the consumption).
+//     - Has "Undo" => return to either HomeView (manual) or SupplementView (auto).
+//
 import SwiftUI
 import HealthKit
+import WatchKit
+
+enum SupplementSource {
+    case manual
+    case auto
+    case none
+}
 
 struct ContentView: View {
+    // MARK: - First Launch
     @State private var isShowingFirstLaunch: Bool = true
     @State private var isMetricsReady: Bool = false
     @State private var restingVO2: Double? = nil
     @State private var bodyMass: Double? = nil
+    
+    // MARK: - Tracking
     @State private var elapsedTime: TimeInterval = 0
     @State private var runningSpeed: Double? = nil
-    @State private var gradient: Double? = nil
-    @State private var heartRate: Double? = nil
-    
-    private let healthManager = HealthManager()
-    private let motionManager = MotionManager()
+    @State private var heartRateVariability: Double? = nil
+    @State private var totalDistance: Double = 0
+    @State private var grade: Double = 0
+    @State private var totalCaloriesBurned: Double = 0
     
     @State private var startTime: Date? = nil
     @State private var timer: Timer? = nil
+    @State private var lastSupplementIntakeTime: Date = Date()
+    
+    // Managers
+    private let healthManager = HealthManager()
+    private let motionManager = MotionManager()
+    
+    // MARK: - Navigation Flow
+    @State private var showStartScreen: Bool = false
+    @State private var showTracking: Bool = false
+    
+    // Supplement Flow
+    @State private var showSupplementView: Bool = false
+    @State private var showSupplementConsumed: Bool = false
+    @State private var supplementSource: SupplementSource = .none
     
     var body: some View {
-        if isShowingFirstLaunch {
-            FirstLaunchView(
-                isMetricsReady: $isMetricsReady,
-                restingVO2: $restingVO2,
-                bodyMass: $bodyMass
-            )
-            .onChange(of: isMetricsReady) { newValue in
-                if newValue {
-                    isShowingFirstLaunch = false
+        NavigationStack {
+            // A) If first launch needed
+            if isShowingFirstLaunch {
+                FirstLaunchView(
+                    isMetricsReady: $isMetricsReady,
+                    restingVO2: $restingVO2,
+                    bodyMass: $bodyMass
+                )
+                .onChange(of: isMetricsReady) { newValue in
+                    if newValue {
+                        // Done => show StartScreen
+                        isShowingFirstLaunch = false
+                        showStartScreen = true
+                    }
                 }
             }
-        } else {
-            HomeView(
-                
-                startTracking: startTracking,
-                elapsedTime: $elapsedTime,
-                runningSpeed: $runningSpeed,
-                heartRate: $heartRate // ✅ Pass heart rate as a binding
-
-            )
+            // B) Show StartScreen
+            else if showStartScreen {
+                StartScreen {
+                    startTracking()
+                    showStartScreen = false
+                    showTracking = true
+                }
+            }
+            // C) Show the main tab (HomeView + StopRunView)
+            else if showTracking {
+                MainTabView(
+                    elapsedTime: $elapsedTime,
+                    pace: computedPace,
+                    heartRateVariability: $heartRateVariability,
+                    grade: $grade,
+                    lastGelTime: lastSupplementIntakeTime,
+                    
+                    // 1) Called if user holds "Taken Gel" for 3s (manual)
+                    onManualGelHold: {
+                        supplementSource = .manual
+                        showSupplementConsumed = true
+                    },
+                    
+                    // 2) Called from StopRunView 3s hold => End run => Back to StartScreen
+                    onStopRun: {
+                        stopTracking() // stops time, metrics
+                        showTracking = false
+                        showStartScreen = true
+                    }
+                )
+                // Automatic rules => SupplementView
+                .navigationDestination(isPresented: $showSupplementView) {
+                    SupplementView {
+                        supplementSource = .auto
+                        showSupplementConsumed = true
+                    }
+                    .navigationBarBackButtonHidden(true)
+                }
+                // After 3s hold => or from auto => show "Gel intake recorded" screen
+                .navigationDestination(isPresented: $showSupplementConsumed) {
+                    SupplementConsumedView(
+                        source: supplementSource,
+                        onFinalize: finalizeSupplementIntake,
+                        onUndo: undoSupplementIntake
+                    )
+                    .navigationBarBackButtonHidden(true) // Remove back button
+                }
+            }
         }
     }
+}
+
+
+// MARK: - Private Methods
+extension ContentView {
     
+    /// Computed pace (m/s) => distance/time
+    private var computedPace: Double? {
+        guard elapsedTime > 0 else { return nil }
+        return totalDistance / elapsedTime
+    }
+    
+    /// Start the run
     func startTracking() {
+        // Do NOT reset lastSupplementIntakeTime => we keep it from before
         startTime = Date()
+        elapsedTime = 0
+        totalDistance = 0
+        totalCaloriesBurned = 0
+        
+        // 1-second timer
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            if let startTime = startTime {
-                elapsedTime = Date().timeIntervalSince(startTime)
-            }
+            guard let startTime = startTime else { return }
+            elapsedTime = Date().timeIntervalSince(startTime)
+            checkSupplementConditions()
         }
         
-        motionManager.startUpdates { speed, gradient, heartRate in
+        // Start pedometer & HRV updates
+        motionManager.startUpdates { distance, speed, floorsAscDesc, hrv in
             DispatchQueue.main.async {
-                runningSpeed = speed
-                self.gradient = gradient
-                self.heartRate = heartRate
+                self.totalDistance = distance ?? 0
+                self.runningSpeed = speed ?? 0
+                self.grade = convertFloorsToGrade(floorsAscDesc)
+                self.heartRateVariability = hrv
+                accumulateCalories()
             }
         }
     }
     
+    /// Stop the run
     func stopTracking() {
         timer?.invalidate()
         timer = nil
         motionManager.stopUpdates()
         elapsedTime = 0
-    }
-}
-
-struct FirstLaunchView: View {
-    @Binding var isMetricsReady: Bool
-    @Binding var restingVO2: Double?
-    @Binding var bodyMass: Double?
-    
-    @State private var showError: Bool = false
-    @State private var selectedWeight: Int = 70
-    
-    private let healthManager = HealthManager()
-    
-    var body: some View {
-        VStack(spacing: 10) {
-            Text("Welcome to NRG Watch App")
-                .font(.headline)
-            
-            Text("Retrieving your metrics...")
-                .onAppear(perform: fetchMetrics)
-            
-            // If there's no error, the user sees nothing else here.
-            // If there's an error, we present a fallback UI:
-            if showError {
-                Text("Unable to fetch your metrics.")
-                    .foregroundColor(.red)
-                    .multilineTextAlignment(.center)
-                
-                // Explain default VO2 usage
-                Text("We'll use a default resting VO2 of 3.5 ml/kg/min. For better accuracy, please measure your actual resting VO2.")
-                    .font(.subheadline)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-                
-                // Body Weight Picker
-                Text("Please select your body weight:")
-                Picker("Body Weight (kg)", selection: $selectedWeight) {
-                    ForEach(40...140, id: \.self) { weight in
-                        Text("\(weight) kg").tag(weight)
-                    }
-                }
-                .labelsHidden()
-                .frame(height: 50)
-                .clipped()
-                
-                // Confirm Button
-                Button("Continue") {
-                    // If restingVO2 wasn't fetched, use the default
-                    if restingVO2 == nil {
-                        restingVO2 = 3.5
-                    }
-                    // Use user-selected weight
-                    bodyMass = Double(selectedWeight)
-                    isMetricsReady = true
-                }
-                .padding()
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(10)
-            }
-        }
-        .padding()
+        totalDistance = 0
+        totalCaloriesBurned = 0
+        runningSpeed = nil
+        heartRateVariability = nil
+        grade = 0
+        
+        // Return to start screen
+        showTracking = false
+        showStartScreen = true
     }
     
-    func fetchMetrics() {
-        // Fetch VO2
-        healthManager.fetchLatestData(for: .vo2Max, unit: HKUnit(from: "ml/kg*min")) { vo2 in
-            DispatchQueue.main.async {
-                if let vo2 = vo2 {
-                    restingVO2 = vo2
-                } else {
-                    showError = true
-                }
-            }
+    /// Check 3 supplement rules each second
+    func checkSupplementConditions() {
+        let now = Date()
+        
+        // 1) More than 1 hour
+        if now >= lastSupplementIntakeTime.addingTimeInterval(3600) {
+            triggerSupplementAlert()
+            return
         }
         
-        // Fetch Body Mass
-        healthManager.fetchLatestData(for: .bodyMass, unit: .gramUnit(with: .kilo)) { mass in
-            DispatchQueue.main.async {
-                if let mass = mass {
-                    bodyMass = mass
-                } else {
-                    showError = true
-                }
-            }
+        // 2) HRV < 65
+        if let hrv = heartRateVariability, hrv < 65 {
+            triggerSupplementAlert()
+            return
         }
-    }
-}
-
-
-struct MainView: View {
-    @Binding var elapsedTime: TimeInterval
-    @Binding var runningSpeed: Double?
-    @Binding var gradient: Double?
-    @Binding var heartRate: Double?
-    
-    let onStart: () -> Void
-    let onStop: () -> Void
-    
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 10) {
-                Text("NRG Watch App")
-                    .font(.headline)
-                
-                MetricRowView(title: "Elapsed Time", value: elapsedTime > 0 ? "\(formatTime(elapsedTime))" : "Not Started")
-                MetricRowView(title: "Running Speed", value: runningSpeed != nil ? "\(String(format: "%.2f", runningSpeed!)) m/s" : "Loading...")
-                MetricRowView(title: "Gradient", value: gradient != nil ? "\(String(format: "%.2f", gradient!)) °" : "Loading...")
-                MetricRowView(title: "Heart Rate", value: heartRate != nil ? "\(String(format: "%.0f", heartRate!)) bpm" : "Loading...")
-                
-                Button(action: onStart) {
-                    Text("Start")
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                }
-                
-                Button(action: onStop) {
-                    Text("Stop")
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.red)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                }
-            }
-            .padding()
-        }
-    }
-    
-    func formatTime(_ interval: TimeInterval) -> String {
-        let minutes = Int(interval) / 60
-        let seconds = Int(interval) % 60
-        return String(format: "%02d:%02d", minutes, seconds)
-    }
-}
-
-struct HomeView: View {
-    let startTracking: () -> Void
-    @Binding var elapsedTime: TimeInterval
-    @Binding var runningSpeed: Double?
-    @Binding var heartRate: Double?
-    
-    @State private var isAnimating = false
-    @State private var navigate = false
-    
-    var body: some View {
-        NavigationStack {
-            VStack {
-                HStack {
-                    Image("NRGLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 80, height: 60)
-                        .padding(.leading, 7)
-                    Spacer()
-                }
-                .padding(.top, -20)
-                
-                Spacer()
-                
-                Button(action: {
-                    startTracking()
-                    WKInterfaceDevice.current().play(.success) // ✅ Haptic Feedback
-                    navigate = true // ✅ Navigate to TrackingView
-                }) {
-                    ZStack {
-                        Circle() // Grey Circular Background
-                            .fill(Color.gray.opacity(0.1)) // Light grey color
-                            .frame(width: 120, height: 120) // Circle size
-                        
-                        Image(systemName: "play.fill") // Play icon
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 65, height: 65) // Icon size
-                            .foregroundColor(Color.fromHex("#00FFC5"))
-                            .scaleEffect(isAnimating ? 1.06 : 0.9) // Pulsating effect
-                            .animation(Animation.easeInOut(duration: 1.3).repeatForever(autoreverses: true), value: isAnimating)
-                    }
-                }
-                .buttonStyle(PlainButtonStyle())
-                .scaleEffect(1.0) // Default size
-                .onLongPressGesture(minimumDuration: 0.1) { // Subtle tap animation
-                    withAnimation(.easeOut(duration: 0.1)) {
-                        WKInterfaceDevice.current().play(.success) // Haptic Feedback
-                    }
-                }
-                
-                Text("START")
-                    .font(.system(size: 27, weight: .bold))
-                    .bold()
-                    .foregroundColor(.white)
-                    .padding(.top, 1)
-                
-                Spacer()
-            }
-            .background(Color.black.edgesIgnoringSafeArea(.all)) // Black background
-            
-            .onAppear {
-                isAnimating = true // Start pulsing animation when the view appears
-            }
-            
-            .navigationDestination(isPresented: $navigate) {
-                TrackingTabView(elapsedTime: $elapsedTime, runningSpeed: $runningSpeed, heartRate: $heartRate) // ✅ Now loads swipeable pages
-            }
-
-        }
-    }
-}
-
-struct TrackingView: View {
-    @Binding var elapsedTime: TimeInterval
-    @Binding var runningSpeed: Double?
-    @Binding var heartRate: Double?
-
-    @State private var navigateToConsume = false // ✅ Controls navigation
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.black.edgesIgnoringSafeArea(.all) // ✅ Background
-
-                VStack {
-                    Spacer().frame(height: 50) // ✅ Restore spacing
-
-                    // **Top Centered Logo**
-                    Image("NRGRun")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 80, height: 80)
-                        .padding(.top, -30)
-
-                    Spacer() // ✅ Ensures correct spacing before elapsed time
-
-                    // **Elapsed Time Display**
-                    HStack {
-                        Text("Elapsed Time:")
-                            .foregroundColor(.white)
-                            .font(.system(size: 16, weight: .medium))
-
-                        Text(formatTime(elapsedTime)) // ⏱️ Live stopwatch
-                            .foregroundColor(.white)
-                            .font(.system(size: 17, weight: .bold))
-                            .monospacedDigit()
-                    }
-                    .padding(.top, 10)
-
-                    Spacer() // ✅ Adds spacing before first divider
-
-                    // **First Divider**
-                    Divider()
-                        .background(Color.white.opacity(0.7))
-                        .frame(height: 1)
-                        .padding(.horizontal, 20)
-
-                    // **Pace Display**
-                    HStack {
-                        Text("Pace:")
-                            .foregroundColor(.white)
-                            .font(.system(size: 16, weight: .medium))
-
-                        Text(runningSpeed != nil ? "\(String(format: "%.2f", runningSpeed!)) m/s" : "Loading...")
-                            .foregroundColor(.white)
-                            .font(.system(size: 17, weight: .bold))
-                            .monospacedDigit()
-                    }
-                    .padding(.top, 5)
-
-                    // **Second Divider**
-                    Divider()
-                        .frame(height: 1)
-                        .overlay(Color.white)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 5)
-
-                    // **Heart Rate Display**
-                    HStack {
-                        Text("Heart Rate:")
-                            .foregroundColor(.white)
-                            .font(.system(size: 16, weight: .medium))
-
-                        Text(heartRate != nil ? "\(String(format: "%.0f", heartRate!)) bpm" : "Loading...")
-                            .foregroundColor(.white)
-                            .font(.system(size: 17, weight: .bold))
-                            .monospacedDigit()
-                    }
-                    .padding(.top, 5)
-
-                    Spacer() // ✅ Pushes everything down to maintain balance
-
-                    // **Hidden Navigation Link (Auto-Navigate after 15s)**
-                    NavigationLink(destination: ConsumeView(), isActive: $navigateToConsume) { EmptyView() }
-                        .hidden()
-                }
-            }
-        }
-        .onAppear {
-            checkElapsedTime() // ✅ Check elapsed time when view loads
-        }
-        .onChange(of: elapsedTime) { _ in
-            checkElapsedTime() // ✅ Check elapsed time continuously
-        }
-    }
-
-    // **Function to Check If Time Reaches 15 Seconds**
-    func checkElapsedTime() {
-        if elapsedTime >= 15 {
-            navigateToConsume = true // ✅ Navigate when time reaches 15s
-        }
-    }
-
-    // **Function to Format Elapsed Time (MM:SS)**
-    func formatTime(_ interval: TimeInterval) -> String {
-        let minutes = Int(interval) / 60
-        let seconds = Int(interval) % 60
-        return String(format: "%02d:%02d", minutes, seconds) // ✅ Formats as MM:SS
-    }
-}
-struct ConsumeView: View {
-    var body: some View {
-        ZStack {
-            Color.black.edgesIgnoringSafeArea(.all) // Background
-
-            VStack {
-                Image("NRGRun")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 100, height: 100) // ✅ Adjust size as needed
-                    .padding(.top, -20)
-
-                Text("Time to take a gel pack")
-                    .foregroundColor(.white)
-                    .font(.system(size: 15, weight: .medium))
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 25)
-            }
-        }
-    }
-}
-
-struct FinishView: View {
-    var body: some View {
-        ZStack {
-            Color.black.edgesIgnoringSafeArea(.all) // ✅ Background
-
-            VStack {
-                Spacer() // ✅ Pushes content down to keep layout balanced
-
-                // **Finish Button (Identical to Start, but says Finish)**
-                Button(action: {
-                    WKInterfaceDevice.current().play(.success) // ✅ Haptic Feedback
-                }) {
-                    ZStack {
-                        Circle() // Grey Circular Background
-                            .fill(Color.gray.opacity(0.1))
-                            .frame(width: 120, height: 120)
-
-                        Image(systemName: "flag.fill") // ✅ Finish Icon
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 65, height: 65)
-                            .foregroundColor(Color.fromHex("#00FFC5"))
-                            .scaleEffect(1.0)
-                    }
-                }
-                .buttonStyle(PlainButtonStyle())
-
-                Text("FINISH")
-                    .font(.system(size: 27, weight: .bold))
-                    .bold()
-                    .foregroundColor(.white)
-                    .padding(.top, 1)
-
-                Spacer() // ✅ Ensures the button stays centered properly
-            }
-        }
-    }
-}
-
-struct TrackingTabView: View {
-    @Binding var elapsedTime: TimeInterval
-    @Binding var runningSpeed: Double?
-    @Binding var heartRate: Double?
-
-    var body: some View {
-        TabView {
-            TrackingView(elapsedTime: $elapsedTime, runningSpeed: $runningSpeed, heartRate: $heartRate)
-                .tabItem { Text("Tracking") }
-
-            FinishView() // ✅ Swipe right to see Finish Page
-                .tabItem { Text("Finish") }
-        }
-        .tabViewStyle(PageTabViewStyle()) // ✅ Enables swipe gestures
-    }
-}
-
-extension Color {
-    static func fromHex(_ hex: String) -> Color {
-        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
         
-        var rgb: UInt64 = 0
-        Scanner(string: hexSanitized).scanHexInt64(&rgb)
-        
-        let red = Double((rgb >> 16) & 0xFF) / 255.0
-        let green = Double((rgb >> 8) & 0xFF) / 255.0
-        let blue = Double(rgb & 0xFF) / 255.0
-        
-        return Color(red: red, green: green, blue: blue)
-    }
-}
-
-struct MetricRowView: View {
-    let title: String
-    let value: String
-    
-    var body: some View {
-        HStack {
-            Text(title)
-                .font(.subheadline)
-            Spacer()
-            Text(value)
-                .font(.subheadline)
+        // 3) Over 120kcal & 30+ min since last gel
+        if totalCaloriesBurned >= 120,
+           now >= lastSupplementIntakeTime.addingTimeInterval(1800) {
+            triggerSupplementAlert()
+            return
         }
-        .padding(.vertical, 5)
+    }
+    
+    /// Navigate to SupplementView (auto-trigger flow)
+    func triggerSupplementAlert() {
+        // Stop the timer so we don't repeatedly trigger
+        timer?.invalidate()
+        timer = nil
+        
+        WKInterfaceDevice.current().play(.success)
+        showSupplementView = true
+    }
+    
+    /// Called from "SupplementConsumedView" -> "Finalize"
+    /// Sets the new gel time if accepted, then re-starts the timer if needed
+    func finalizeSupplementIntake() {
+        // Update last gel time => do NOT reset timer
+        lastSupplementIntakeTime = Date()
+        totalCaloriesBurned = 0
+        
+        // If we want to keep run going, re-start the timer
+        if startTime != nil, timer == nil {
+            timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+                guard let startTime = startTime else { return }
+                elapsedTime = Date().timeIntervalSince(startTime)
+                checkSupplementConditions()
+            }
+        }
+    }
+    
+    /// Called from "SupplementConsumedView" -> "Undo"
+    /// Return to HomeView or SupplementView based on source
+    func undoSupplementIntake(_ source: SupplementSource) {
+        // If we were in auto flow, go back to SupplementView
+        // If we were in manual flow, go back to HomeView
+        switch source {
+        case .auto:
+            showSupplementConsumed = false
+            showSupplementView = true
+        case .manual:
+            showSupplementConsumed = false
+        case .none:
+            // Shouldn't happen, do nothing
+            break
+        }
+    }
+    
+    /// Convert floors to gradient
+    func convertFloorsToGrade(_ floorsAscDesc: Double?) -> Double {
+        guard let floors = floorsAscDesc else { return 0 }
+        let verticalMeters = floors * 3.0
+        let horizontal = max(totalDistance, 1)
+        return verticalMeters / horizontal
+    }
+    
+    /// Calories via the standard formula
+    func accumulateCalories() {
+        guard let vo2Rest = restingVO2, let mass = bodyMass else { return }
+        
+        let speedMPerMin = (runningSpeed ?? 0) * 60
+        let vo2 = (0.2 * speedMPerMin) + (0.9 * speedMPerMin * grade) + vo2Rest
+        let litersO2PerMin = vo2 * (mass / 1000.0)
+        let kcalPerMin = litersO2PerMin * 4.9
+        let kcalPerSecond = kcalPerMin / 60.0
+        totalCaloriesBurned += kcalPerSecond
     }
 }
