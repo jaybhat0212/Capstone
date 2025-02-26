@@ -6,51 +6,76 @@ struct HomeView: View {
     let pace: Double?
     @Binding var heartRateVariability: Double?
     @Binding var grade: Double
-    let lastGelTime: Date
+    let lastGelTime: TimeInterval  // elapsed time when gel was taken
     
     let onManualGelHold: () -> Void
     
-    // For the 3s hold button
-    @State private var isHolding = false
+    // State for the hold gesture with ring animation
+    @State private var isPressing = false
+    @State private var holdProgress: CGFloat = 0.0
+    @State private var holdTimer: Timer? = nil
+    
+    // New state for pulsing the NRGRun image.
+    @State private var isPulsing = false
     
     var body: some View {
         ZStack {
             Color.black.edgesIgnoringSafeArea(.all)
             
             VStack(spacing: 4) {
-                
-                // 1) Large icon at the top, moved up a bit
-                Image("NRGRun")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 80, height: 80)   // Larger icon
-                    .offset(y: -5)                // Moves the icon up slightly
-                    .gesture(
-                        LongPressGesture(minimumDuration: 3.0)
-                            .onChanged { _ in
-                                isHolding = true
+                // 1) Hold gesture area with ring and pulsing image
+                ZStack {
+                    // Background ring (faint)
+                    Circle()
+                        .stroke(Color.fromHex("#00FFC5").opacity(0.2), lineWidth: 6)
+                        .frame(width: 80, height: 80)
+                    
+                    // Animated progress ring that fills up over 3 seconds
+                    Circle()
+                        .trim(from: 0.0, to: holdProgress)
+                        .stroke(Color.fromHex("#00FFC5"), style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 80, height: 80)
+                        .animation(.linear, value: holdProgress)
+                    
+                    // The NRGRun image that pulses
+                    Image("NRGRun")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 50, height: 50)
+                        .scaleEffect(isPulsing ? 1.1 : 1.0)
+                        .animation(Animation.easeInOut(duration: 1).repeatForever(autoreverses: true), value: isPulsing)
+                        .onAppear {
+                            isPulsing = true
+                        }
+                }
+                .offset(y: -5)
+                // Use a DragGesture (with zero minimum distance) to track press start and end
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { _ in
+                            if !isPressing {
+                                isPressing = true
+                                startHoldTimer()
                             }
-                            .onEnded { _ in
-                                WKInterfaceDevice.current().play(.success)
-                                onManualGelHold()
-                                isHolding = false
-                            }
-                    )
+                        }
+                        .onEnded { _ in
+                            endHoldGesture()
+                        }
+                )
                 
-                // 2) Bigger time counter
+                // 2) Time counter
                 Text(formatTime(elapsedTime))
-                    .font(.title3)               // Bigger font than title3
+                    .font(.title3)
                     .foregroundColor(.white)
                 
-                // First divider
                 Divider()
                     .frame(width: 160)
                     .background(Color.gray)
                     .padding(.top, 8)
                 
-                // "Avg Pace" label + pace below
+                // "Avg Pace" and "Last Gel" information.
                 HStack(alignment: .top) {
-                    // LEFT: Avg Pace
                     VStack(spacing: 2) {
                         Text("Avg Pace")
                             .foregroundColor(.gray)
@@ -67,27 +92,24 @@ struct HomeView: View {
                     
                     Spacer()
                     
-                    // RIGHT: Time Since Last Gel
                     VStack(spacing: 2) {
                         Text("Last Gel")
                             .foregroundColor(.gray)
                             .font(.caption)
                         
-                        // Show how long since lastGelTime
-                        Text(formatTimeSince(lastGelTime))
+                        Text(lastGelTime > 0 ? formatGelTime(lastGelTime) : "00:00:00")
                             .foregroundColor(.white)
                     }
                 }
                 .padding(.horizontal, 16)
                 
-                // Second divider
                 Divider()
                     .frame(width: 160)
                     .background(Color.gray)
                 
                 Spacer()
                 
-                // Bottom row: Distance on the left + Heart icon & rate on the right
+                // Bottom row: distance and heart rate.
                 HStack {
                     Text("\(distanceString()) km")
                         .foregroundColor(.white)
@@ -100,7 +122,7 @@ struct HomeView: View {
                             .foregroundColor(.red)
                         
                         if let hrv = heartRateVariability {
-                            Text("\(Int(hrv))") // e.g., "75 BPM"
+                            Text("\(Int(hrv))")
                                 .foregroundColor(.white)
                         } else {
                             Text("--")
@@ -112,9 +134,37 @@ struct HomeView: View {
                 .padding(.bottom, 6)
             }
         }
+        .onAppear {
+            endHoldGesture() // Reset the progress ring when HomeView appears.
+        }
     }
     
-    // Simple time formatter (MM:SS)
+    // MARK: - Hold Gesture Helpers
+    
+    /// Starts a timer that increments `holdProgress` from 0 to 1 over 3 seconds.
+    func startHoldTimer() {
+        holdProgress = 0.0
+        holdTimer = Timer.scheduledTimer(withTimeInterval: 0.01, repeats: true) { _ in
+            holdProgress += 0.01 / 3.0  // Linear increment over 3 seconds
+            if holdProgress >= 1.0 {
+                holdProgress = 1.0
+                WKInterfaceDevice.current().play(.success)
+                onManualGelHold()
+                endHoldGesture()
+            }
+        }
+    }
+    
+    /// Ends the hold gesture and resets progress.
+    func endHoldGesture() {
+        holdTimer?.invalidate()
+        holdTimer = nil
+        isPressing = false
+        holdProgress = 0.0
+    }
+    
+    // MARK: - Helper Methods
+    
     func formatTime(_ interval: TimeInterval) -> String {
         let minutes = Int(interval) / 60
         let seconds = Int(interval) % 60
@@ -128,11 +178,12 @@ struct HomeView: View {
         return String(format: "%.2f", distanceInKm)
     }
     
-    // How long ago was last gel
-    func formatTimeSince(_ date: Date) -> String {
-        let diff = Date().timeIntervalSince(date)
-        let minutes = Int(diff) / 60
-        let seconds = Int(diff) % 60
-        return "\(minutes)m \(seconds)s"
+    // Formats a TimeInterval (seconds elapsed) as HH:mm:ss.
+    func formatGelTime(_ interval: TimeInterval) -> String {
+        let hours = Int(interval) / 3600
+        let minutes = (Int(interval) % 3600) / 60
+        let seconds = Int(interval) % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
 }
+
