@@ -1,24 +1,3 @@
-//
-//  ContentView.swift
-//  NRG
-//
-//  High-level app flow:
-//
-//  1. If metrics are not ready (first launch), show FirstLaunchView.
-//     -> Then leads to StartScreen.
-//
-//  2. StartScreen -> press "Start" -> startTracking() -> show MainTabView.
-//
-//  3. MainTabView has two pages:
-//     - Page 0: HomeView (time, pace, HRV, gradient, last gel, manual 3s hold => SupplementConsumedView)
-//     - Page 1: StopRunView (3s hold to end run => back to StartScreen)
-//
-//  4. If any of the 3 rules triggers a gel notification, navigate to SupplementView (3s hold) -> SupplementConsumedView.
-//
-//  5. SupplementConsumedView:
-//     - Displays "Gel intake recorded" with 5s auto-return to HomeView (finalizing the consumption).
-//     - Has "Undo" => return to either HomeView (manual) or SupplementView (auto).
-//
 import SwiftUI
 import HealthKit
 import WatchKit
@@ -46,7 +25,10 @@ struct ContentView: View {
     
     @State private var startTime: Date? = nil
     @State private var timer: Timer? = nil
-    @State private var lastSupplementIntakeTime: Date = Date()
+    // Gel consumption time (in elapsed seconds) for the last gel taken.
+    @State private var lastSupplementIntakeTime: TimeInterval = 0
+    // Array to store every gel intake event (the elapsed time when each gel was taken).
+    @State private var gelIntakeTimes: [TimeInterval] = []
     
     // Managers
     private let healthManager = HealthManager()
@@ -63,7 +45,6 @@ struct ContentView: View {
     
     var body: some View {
         NavigationStack {
-            // A) If first launch needed
             if isShowingFirstLaunch {
                 FirstLaunchView(
                     isMetricsReady: $isMetricsReady,
@@ -72,43 +53,36 @@ struct ContentView: View {
                 )
                 .onChange(of: isMetricsReady) { newValue in
                     if newValue {
-                        // Done => show StartScreen
                         isShowingFirstLaunch = false
                         showStartScreen = true
                     }
                 }
-            }
-            // B) Show StartScreen
-            else if showStartScreen {
+            } else if showStartScreen {
                 StartScreen {
                     startTracking()
                     showStartScreen = false
                     showTracking = true
                 }
-            }
-            // C) Show the main tab (HomeView + StopRunView)
-            else if showTracking {
+            } else if showTracking {
                 MainTabView(
                     elapsedTime: $elapsedTime,
                     pace: computedPace,
                     heartRateVariability: $heartRateVariability,
                     grade: $grade,
                     lastGelTime: lastSupplementIntakeTime,
-                    
-                    // 1) Called if user holds "Taken Gel" for 3s (manual)
+                    totalDistance: totalDistance,
+                    runningSpeed: runningSpeed,
+                    totalCaloriesBurned: totalCaloriesBurned,
                     onManualGelHold: {
                         supplementSource = .manual
                         showSupplementConsumed = true
                     },
-                    
-                    // 2) Called from StopRunView 3s hold => End run => Back to StartScreen
                     onStopRun: {
-                        stopTracking() // stops time, metrics
+                        stopTracking()
                         showTracking = false
                         showStartScreen = true
                     }
                 )
-                // Automatic rules => SupplementView
                 .navigationDestination(isPresented: $showSupplementView) {
                     SupplementView {
                         supplementSource = .auto
@@ -116,46 +90,42 @@ struct ContentView: View {
                     }
                     .navigationBarBackButtonHidden(true)
                 }
-                // After 3s hold => or from auto => show "Gel intake recorded" screen
                 .navigationDestination(isPresented: $showSupplementConsumed) {
                     SupplementConsumedView(
                         source: supplementSource,
                         onFinalize: finalizeSupplementIntake,
                         onUndo: undoSupplementIntake
                     )
-                    .navigationBarBackButtonHidden(true) // Remove back button
+                    .navigationBarBackButtonHidden(true)
                 }
             }
         }
     }
-}
-
-
-// MARK: - Private Methods
-extension ContentView {
     
-    /// Computed pace (m/s) => distance/time
+    // MARK: - Computed Properties
+    
     private var computedPace: Double? {
         guard elapsedTime > 0 else { return nil }
         return totalDistance / elapsedTime
     }
     
-    /// Start the run
+    // MARK: - Tracking Methods
+    
     func startTracking() {
-        // Do NOT reset lastSupplementIntakeTime => we keep it from before
         startTime = Date()
         elapsedTime = 0
         totalDistance = 0
         totalCaloriesBurned = 0
         
-        // 1-second timer
+        // When starting a run, no gel has been taken yet.
+        lastSupplementIntakeTime = 0
+        
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             guard let startTime = startTime else { return }
             elapsedTime = Date().timeIntervalSince(startTime)
             checkSupplementConditions()
         }
         
-        // Start pedometer & HRV updates
         motionManager.startUpdates { distance, speed, floorsAscDesc, hrv in
             DispatchQueue.main.async {
                 self.totalDistance = distance ?? 0
@@ -167,7 +137,6 @@ extension ContentView {
         }
     }
     
-    /// Stop the run
     func stopTracking() {
         timer?.invalidate()
         timer = nil
@@ -178,54 +147,47 @@ extension ContentView {
         runningSpeed = nil
         heartRateVariability = nil
         grade = 0
-        
-        // Return to start screen
-        showTracking = false
-        showStartScreen = true
     }
     
-    /// Check 3 supplement rules each second
+    // For testing, trigger the supplement alert every 30 seconds.
     func checkSupplementConditions() {
-        let now = Date()
-        
-        // 1) More than 1 hour
-        if now >= lastSupplementIntakeTime.addingTimeInterval(3600) {
+        let currentElapsed = elapsedTime
+        if currentElapsed >= lastSupplementIntakeTime + 30 {
             triggerSupplementAlert()
             return
         }
-        
-        // 2) HRV < 65
+        // HRV condition.
         if let hrv = heartRateVariability, hrv < 65 {
             triggerSupplementAlert()
             return
         }
-        
-        // 3) Over 120kcal & 30+ min since last gel
-        if totalCaloriesBurned >= 120,
-           now >= lastSupplementIntakeTime.addingTimeInterval(1800) {
+        // Condition: over 120 kcal burned and at least 30 minutes (1800 seconds) since last gel.
+        if totalCaloriesBurned >= 120 && currentElapsed >= lastSupplementIntakeTime + 1800 {
             triggerSupplementAlert()
             return
         }
     }
     
-    /// Navigate to SupplementView (auto-trigger flow)
     func triggerSupplementAlert() {
-        // Stop the timer so we don't repeatedly trigger
         timer?.invalidate()
         timer = nil
-        
         WKInterfaceDevice.current().play(.success)
         showSupplementView = true
     }
     
-    /// Called from "SupplementConsumedView" -> "Finalize"
-    /// Sets the new gel time if accepted, then re-starts the timer if needed
+    // Updated: Finalize supplement intake immediately updates the displayed elapsed time.
     func finalizeSupplementIntake() {
-        // Update last gel time => do NOT reset timer
-        lastSupplementIntakeTime = Date()
+        if let startTime = startTime {
+            // Recalculate the current elapsed time right now.
+            let currentElapsed = Date().timeIntervalSince(startTime)
+            // Update both elapsedTime and lastSupplementIntakeTime immediately.
+            elapsedTime = currentElapsed
+            lastSupplementIntakeTime = currentElapsed
+            gelIntakeTimes.append(currentElapsed)
+        }
         totalCaloriesBurned = 0
         
-        // If we want to keep run going, re-start the timer
+        // Restart timer if needed.
         if startTime != nil, timer == nil {
             timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
                 guard let startTime = startTime else { return }
@@ -235,11 +197,7 @@ extension ContentView {
         }
     }
     
-    /// Called from "SupplementConsumedView" -> "Undo"
-    /// Return to HomeView or SupplementView based on source
     func undoSupplementIntake(_ source: SupplementSource) {
-        // If we were in auto flow, go back to SupplementView
-        // If we were in manual flow, go back to HomeView
         switch source {
         case .auto:
             showSupplementConsumed = false
@@ -247,12 +205,10 @@ extension ContentView {
         case .manual:
             showSupplementConsumed = false
         case .none:
-            // Shouldn't happen, do nothing
             break
         }
     }
     
-    /// Convert floors to gradient
     func convertFloorsToGrade(_ floorsAscDesc: Double?) -> Double {
         guard let floors = floorsAscDesc else { return 0 }
         let verticalMeters = floors * 3.0
@@ -260,15 +216,19 @@ extension ContentView {
         return verticalMeters / horizontal
     }
     
-    /// Calories via the standard formula
     func accumulateCalories() {
         guard let vo2Rest = restingVO2, let mass = bodyMass else { return }
-        
         let speedMPerMin = (runningSpeed ?? 0) * 60
         let vo2 = (0.2 * speedMPerMin) + (0.9 * speedMPerMin * grade) + vo2Rest
         let litersO2PerMin = vo2 * (mass / 1000.0)
         let kcalPerMin = litersO2PerMin * 4.9
         let kcalPerSecond = kcalPerMin / 60.0
         totalCaloriesBurned += kcalPerSecond
+    }
+}
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
     }
 }
