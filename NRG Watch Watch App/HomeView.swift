@@ -4,7 +4,7 @@ import WatchKit
 struct HomeView: View {
     @Binding var elapsedTime: TimeInterval
     let pace: Double?
-    @Binding var heartRateVariability: Double?
+    @Binding var heartRate: Double?          // Updated binding for heart rate
     @Binding var grade: Double
     let lastGelTime: TimeInterval  // elapsed time when gel was taken
     
@@ -121,8 +121,8 @@ struct HomeView: View {
                         Image(systemName: "heart.fill")
                             .foregroundColor(.red)
                         
-                        if let hrv = heartRateVariability {
-                            Text("\(Int(hrv))")
+                        if let hr = heartRate {
+                            Text("\(Int(hr)) bpm")
                                 .foregroundColor(.white)
                         } else {
                             Text("--")
@@ -186,4 +186,3 @@ struct HomeView: View {
         return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
 }
-

@@ -3,7 +3,9 @@ import SwiftUI
 struct MetricsView: View {
     @Binding var elapsedTime: TimeInterval
     let pace: Double?
+    @Binding var heartRate: Double?                   // New binding for heart rate
     @Binding var heartRateVariability: Double?
+    let vo2: Double?                                  // New parameter for VO₂
     @Binding var grade: Double
     // Gel time passed as a TimeInterval (in seconds).
     let lastGelTime: TimeInterval
@@ -18,7 +20,11 @@ struct MetricsView: View {
                 MetricRow(title: "Distance", value: String(format: "%.2f km", totalDistance / 1000.0))
                 MetricRow(title: "Pace", value: pace != nil ? String(format: "%.2f km/h", pace!) : "--")
                 MetricRow(title: "Running Speed", value: runningSpeed != nil ? String(format: "%.2f m/s", runningSpeed!) : "--")
-                MetricRow(title: "HRV", value: heartRateVariability != nil ? String(format: "%.0f", heartRateVariability!) : "--")
+                // New: Heart Rate row.
+                MetricRow(title: "Heart Rate", value: heartRate != nil ? String(format: "%.0f bpm", heartRate!) : "--")
+                MetricRow(title: "HRV", value: heartRateVariability != nil ? String(format: "%.0f ms", heartRateVariability!) : "--")
+                // New: VO₂ row.
+                MetricRow(title: "VO₂", value: vo2 != nil ? String(format: "%.1f ml/kg·min", vo2!) : "--")
                 MetricRow(title: "Grade", value: String(format: "%.2f", grade))
                 // Display the gel consumption time in HH:mm:ss. If no gel, show "00:00:00".
                 MetricRow(title: "Last Gel", value: lastGelTime > 0 ? formatGelTime(lastGelTime) : "00:00:00")
@@ -66,7 +72,9 @@ struct MetricsView_Previews: PreviewProvider {
         MetricsView(
             elapsedTime: .constant(125),
             pace: 10.0,
+            heartRate: .constant(72),
             heartRateVariability: .constant(75),
+            vo2: 35.0,
             grade: .constant(0.05),
             lastGelTime: 3500,
             totalDistance: 3500,

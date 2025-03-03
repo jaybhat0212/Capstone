@@ -8,7 +8,7 @@ struct FirstLaunchView: View {
     
     @State private var showError: Bool = false
     @State private var selectedWeight: Int = 70
-    
+
     private let healthManager = HealthManager()
     
     var body: some View {
@@ -24,7 +24,7 @@ struct FirstLaunchView: View {
                     .foregroundColor(.red)
                     .multilineTextAlignment(.center)
                 
-                Text("We'll use a default resting VO2 of 3.5 ml/kg/min.")
+                Text("We'll use a default resting VO₂ of 3.5 ml/kg/min.")
                     .font(.subheadline)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
@@ -61,23 +61,18 @@ struct FirstLaunchView: View {
                 }
                 return
             }
-            // Attempt to fetch VO2
-            healthManager.fetchLatestData(for: .vo2Max,
-                                          unit: HKUnit(from: "ml/kg*min")) { vo2 in
+
+            healthManager.fetchLatestData(for: .vo2Max, unit: HKUnit(from: "ml/kg*min")) { vo2 in
                 DispatchQueue.main.async {
-                    if let vo2 = vo2 {
-                        restingVO2 = vo2
-                    } else {
-                        showError = true
-                    }
+                    restingVO2 = vo2
                 }
             }
-            // Attempt to fetch BodyMass
-            healthManager.fetchLatestData(for: .bodyMass,
-                                          unit: .gramUnit(with: .kilo)) { mass in
+
+            healthManager.fetchLatestData(for: .bodyMass, unit: .gramUnit(with: .kilo)) { mass in
                 DispatchQueue.main.async {
                     if let mass = mass {
                         bodyMass = mass
+                        selectedWeight = Int(mass)
                     } else {
                         showError = true
                     }
