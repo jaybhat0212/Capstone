@@ -27,13 +27,9 @@ struct ContentView: View {
     
     @State private var startTime: Date? = nil
     @State private var timer: Timer? = nil
-<<<<<<< HEAD
-    @State private var lastSupplementIntakeTime: TimeInterval = 0
-=======
     // Gel consumption time (in elapsed seconds) for the last gel taken.
     @State private var lastSupplementIntakeTime: TimeInterval = 0
     // Array to store every gel intake event (the elapsed time when each gel was taken).
->>>>>>> main
     @State private var gelIntakeTimes: [TimeInterval] = []
     
     // Managers
@@ -50,17 +46,6 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             if isShowingFirstLaunch {
-<<<<<<< HEAD
-                FirstLaunchView(isMetricsReady: $isMetricsReady,
-                                restingVO2: $restingVO2,
-                                bodyMass: $bodyMass)
-                    .onChange(of: isMetricsReady) { newValue in
-                        if newValue {
-                            isShowingFirstLaunch = false
-                            showStartScreen = true
-                        }
-                    }
-=======
                 FirstLaunchView(
                     isMetricsReady: $isMetricsReady,
                     restingVO2: $restingVO2,
@@ -72,7 +57,6 @@ struct ContentView: View {
                         showStartScreen = true
                     }
                 }
->>>>>>> main
             } else if showStartScreen {
                 StartScreen {
                     startTracking()
@@ -115,7 +99,6 @@ struct ContentView: View {
                         onUndo: undoSupplementIntake
                     )
                     .navigationBarBackButtonHidden(true)
-<<<<<<< HEAD
                 }
             }
         }
@@ -131,8 +114,6 @@ struct ContentView: View {
                     self.bodyMass = bodyMass
                     self.heartRateVariability = hrv
                     self.heartRate = heartRate
-=======
->>>>>>> main
                 }
             }
         }
@@ -152,26 +133,16 @@ struct ContentView: View {
         elapsedTime = 0
         totalDistance = 0
         totalCaloriesBurned = 0
-<<<<<<< HEAD
-        lastSupplementIntakeTime = 0
-
-=======
-        
         // When starting a run, no gel has been taken yet.
         lastSupplementIntakeTime = 0
         
->>>>>>> main
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             guard let startTime = startTime else { return }
             elapsedTime = Date().timeIntervalSince(startTime)
             checkSupplementConditions()
         }
         
-<<<<<<< HEAD
         motionManager.startUpdates { distance, speed, floorsAscDesc, hrv, hr in
-=======
-        motionManager.startUpdates { distance, speed, floorsAscDesc, hrv in
->>>>>>> main
             DispatchQueue.main.async {
                 self.totalDistance = distance ?? self.totalDistance
                 self.runningSpeed = speed ?? 0
@@ -180,7 +151,7 @@ struct ContentView: View {
                 if let newHRV = hrv {
                     self.heartRateVariability = newHRV
                 }
-                if let newHR = hr {
+                if let newHR = hr {  // Added 'hr' (heart rate) to the condition check
                     self.heartRate = newHR
                 }
 
@@ -193,13 +164,6 @@ struct ContentView: View {
         timer?.invalidate()
         timer = nil
         motionManager.stopUpdates()
-<<<<<<< HEAD
-    }
-
-    func finalizeSupplementIntake() {
-        if let startTime = startTime {
-            let currentElapsed = Date().timeIntervalSince(startTime)
-=======
         elapsedTime = 0
         totalDistance = 0
         totalCaloriesBurned = 0
@@ -240,18 +204,13 @@ struct ContentView: View {
             // Recalculate the current elapsed time right now.
             let currentElapsed = Date().timeIntervalSince(startTime)
             // Update both elapsedTime and lastSupplementIntakeTime immediately.
->>>>>>> main
             elapsedTime = currentElapsed
             lastSupplementIntakeTime = currentElapsed
             gelIntakeTimes.append(currentElapsed)
         }
         totalCaloriesBurned = 0
-<<<<<<< HEAD
-
-=======
         
         // Restart timer if needed.
->>>>>>> main
         if startTime != nil, timer == nil {
             timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
                 guard let startTime = startTime else { return }
@@ -260,34 +219,7 @@ struct ContentView: View {
             }
         }
     }
-<<<<<<< HEAD
-
-    func checkSupplementConditions() {
-        let currentElapsed = elapsedTime
-        if currentElapsed >= lastSupplementIntakeTime + 2700 {
-            triggerSupplementAlert()
-            return
-        }
-        if let hrv = heartRateVariability, hrv > 65 {
-            triggerSupplementAlert()
-            return
-        }
-        if totalCaloriesBurned >= 120 && currentElapsed >= lastSupplementIntakeTime + 1800 {
-            triggerSupplementAlert()
-            return
-        }
-    }
-
-    func triggerSupplementAlert() {
-        timer?.invalidate()
-        timer = nil
-        WKInterfaceDevice.current().play(.success)  // 🔔 Haptic feedback to notify user
-        showSupplementView = true
-    }
-
-=======
     
->>>>>>> main
     func undoSupplementIntake(_ source: SupplementSource) {
         switch source {
         case .auto:
@@ -299,22 +231,14 @@ struct ContentView: View {
             break
         }
     }
-<<<<<<< HEAD
-
-=======
     
->>>>>>> main
     func convertFloorsToGrade(_ floorsAscDesc: Double?) -> Double {
         guard let floors = floorsAscDesc else { return 0 }
         let verticalMeters = floors * 3.0
         let horizontal = max(totalDistance, 1)
         return verticalMeters / horizontal
     }
-<<<<<<< HEAD
-
-=======
     
->>>>>>> main
     func accumulateCalories() {
         guard let vo2Rest = restingVO2, let mass = bodyMass else { return }
         let speedMPerMin = (runningSpeed ?? 0) * 60

@@ -121,13 +121,8 @@ struct HomeView: View {
                         Image(systemName: "heart.fill")
                             .foregroundColor(.red)
                         
-<<<<<<< HEAD
                         if let hr = heartRate {
                             Text("\(Int(hr)) bpm")
-=======
-                        if let hrv = heartRateVariability {
-                            Text("\(Int(hrv))")
->>>>>>> main
                                 .foregroundColor(.white)
                         } else {
                             Text("--")
@@ -191,4 +186,3 @@ struct HomeView: View {
         return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
 }
-
