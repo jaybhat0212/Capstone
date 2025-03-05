@@ -4,17 +4,19 @@ import WatchKit
 struct StopRunView: View {
     let onStopRun: () -> Void
     
-    @State private var isPressing = false
     @State private var isAnimating = false
     
     var body: some View {
-            ZStack {
-                Color.black.edgesIgnoringSafeArea(.all)
+        ZStack {
+            Color.black.edgesIgnoringSafeArea(.all)
+            
+            VStack {
+                Spacer()
                 
-                VStack {
-                    Spacer()
-                    
-                    // Circle background + Flag icon
+                Button(action: {
+                    WKInterfaceDevice.current().play(.success)
+                    onStopRun()
+                }) {
                     ZStack {
                         Circle()
                             .fill(Color.gray.opacity(0.1))
@@ -32,27 +34,26 @@ struct StopRunView: View {
                                 value: isAnimating
                             )
                     }
-                    .onAppear {
-                        isAnimating = true
-                    }
-                    // Attach the 3-second long press to the whole ZStack
-                    .gesture(
-                        LongPressGesture(minimumDuration: 3.0)
-                            .onChanged { _ in
-                                // Optionally provide visual feedback here if desired
-                            }
-                            .onEnded { _ in
-                                WKInterfaceDevice.current().play(.success)
-                                onStopRun()
-                            }
-                    )
-                    
-                    Text("FINISH RUN")
-                        .font(.system(size: 27, weight: .bold))
-                        .foregroundColor(.white)
-                    
-                    Spacer()
                 }
+                .buttonStyle(.plain)
+                .onAppear {
+                    isAnimating = true
+                }
+                
+                Text("FINISH RUN")
+                    .font(.system(size: 27, weight: .bold))
+                    .foregroundColor(.white)
+                
+                Spacer()
             }
         }
     }
+}
+
+struct StopRunView_Previews: PreviewProvider {
+    static var previews: some View {
+        StopRunView {
+            // Preview action
+        }
+    }
+}
