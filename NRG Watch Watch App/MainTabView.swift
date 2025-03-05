@@ -7,6 +7,10 @@ struct MainTabView: View {
     @Binding var heartRateVariability: Double?
     let vo2: Double?                              // New parameter for VO₂
     @Binding var grade: Double
+<<<<<<< HEAD
+=======
+    // Updated type: now a TimeInterval instead of Date.
+>>>>>>> main
     let lastGelTime: TimeInterval
     
     // Additional metrics for MetricsView
@@ -33,6 +37,7 @@ struct MainTabView: View {
             )
             .tag(0)
             
+<<<<<<< HEAD
             // Page 1: MetricsView – shows heart rate, HRV, and VO₂.
             MetricsView(
                 elapsedTime: $elapsedTime,
@@ -40,6 +45,13 @@ struct MainTabView: View {
                 heartRate: $heartRate,            // New parameter for heart rate
                 heartRateVariability: $heartRateVariability,
                 vo2: vo2,                         // Pass VO₂ value
+=======
+            // Page 1: MetricsView
+            MetricsView(
+                elapsedTime: $elapsedTime,
+                pace: pace,
+                heartRateVariability: $heartRateVariability,
+>>>>>>> main
                 grade: $grade,
                 lastGelTime: lastGelTime,
                 totalDistance: totalDistance,
@@ -64,10 +76,16 @@ struct MainTabView_Previews: PreviewProvider {
         MainTabView(
             elapsedTime: .constant(125),
             pace: 10.0,
+<<<<<<< HEAD
             heartRate: .constant(72),
             heartRateVariability: .constant(75),
             vo2: 35.0,
             grade: .constant(0.05),
+=======
+            heartRateVariability: .constant(75),
+            grade: .constant(0.05),
+            // Sample elapsed gel time (e.g., 0 seconds means no gel consumed yet)
+>>>>>>> main
             lastGelTime: 0,
             totalDistance: 3500,
             runningSpeed: 3.5,
