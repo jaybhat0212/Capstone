@@ -16,6 +16,9 @@
 		7B1E45A92C4AFCE400D251CD /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B1E45A82C4AFCE400D251CD /* AppDelegate.swift */; };
 		7B1E45AB2C4AFCFF00D251CD /* HealthStoreManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B1E45AA2C4AFCFF00D251CD /* HealthStoreManager.swift */; };
 		7BDF473E2D387BB80087D4A9 /* NRG Watch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 7BDF47312D387BB40087D4A9 /* NRG Watch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		FEF402BF2D7A5E8C0046BD9D /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEF402BE2D7A5E880046BD9D /* MainTabView.swift */; };
+		FEF402C12D7A5E910046BD9D /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEF402C02D7A5E8F0046BD9D /* HomeView.swift */; };
+		FEF402C32D7A5E9A0046BD9D /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEF402C22D7A5E970046BD9D /* ProfileView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -54,6 +57,9 @@
 		7B1E45A82C4AFCE400D251CD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7B1E45AA2C4AFCFF00D251CD /* HealthStoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthStoreManager.swift; sourceTree = "<group>"; };
 		7BDF47312D387BB40087D4A9 /* NRG Watch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "NRG Watch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		FEF402BE2D7A5E880046BD9D /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		FEF402C02D7A5E8F0046BD9D /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		FEF402C22D7A5E970046BD9D /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -102,6 +108,9 @@
 				7B1E45A72C4AF9AC00D251CD /* NRG.entitlements */,
 				7B1E458E2C4AF42900D251CD /* NRGApp.swift */,
 				7B1E45902C4AF42900D251CD /* ContentView.swift */,
+				FEF402BE2D7A5E880046BD9D /* MainTabView.swift */,
+				FEF402C02D7A5E8F0046BD9D /* HomeView.swift */,
+				FEF402C22D7A5E970046BD9D /* ProfileView.swift */,
 				7B1E45922C4AF42D00D251CD /* Assets.xcassets */,
 				7B1E45972C4AF42D00D251CD /* Persistence.swift */,
 				7B1E45992C4AF42D00D251CD /* NRG.xcdatamodeld */,
@@ -226,9 +235,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				7B1E45982C4AF42D00D251CD /* Persistence.swift in Sources */,
+				FEF402C32D7A5E9A0046BD9D /* ProfileView.swift in Sources */,
 				7B1E45AB2C4AFCFF00D251CD /* HealthStoreManager.swift in Sources */,
 				7B1E45912C4AF42900D251CD /* ContentView.swift in Sources */,
 				7B1E458F2C4AF42900D251CD /* NRGApp.swift in Sources */,
+				FEF402BF2D7A5E8C0046BD9D /* MainTabView.swift in Sources */,
+				FEF402C12D7A5E910046BD9D /* HomeView.swift in Sources */,
 				7B1E45A92C4AFCE400D251CD /* AppDelegate.swift in Sources */,
 				7B1E459B2C4AF42D00D251CD /* NRG.xcdatamodeld in Sources */,
 			);

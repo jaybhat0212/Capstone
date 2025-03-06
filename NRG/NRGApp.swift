@@ -14,7 +14,7 @@ struct NRGApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainTabView()
                 .environmentObject(HealthStoreManager())
         }
     }
