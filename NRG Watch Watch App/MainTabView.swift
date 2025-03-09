@@ -5,18 +5,22 @@ struct MainTabView: View {
     let pace: Double?
     @Binding var heartRateVariability: Double?
     @Binding var grade: Double
-    // Updated type: now a TimeInterval instead of Date.
+    
+    let vo2Max: Double?
+    
     let lastGelTime: TimeInterval
     
-    // Additional metrics for MetricsView
     let totalDistance: Double
     let runningSpeed: Double?
     let totalCaloriesBurned: Double
     
-    // Called if user manually holds for 3s on HomeView's "Taken Gel"
+    // NEW: We pass in heartRate as well
+    @Binding var heartRate: Double?
+    
+    // Called if user manually holds for 3s on HomeView's “Taken Gel”
     let onManualGelHold: () -> Void
     
-    // Called if user 3s-holds on StopRunView to end run
+    // Called if user holds the StopRunView
     let onStopRun: () -> Void
     
     var body: some View {
@@ -25,6 +29,7 @@ struct MainTabView: View {
             HomeView(
                 elapsedTime: $elapsedTime,
                 pace: pace,
+                heartRate: $heartRate,
                 heartRateVariability: $heartRateVariability,
                 grade: $grade,
                 lastGelTime: lastGelTime,
@@ -38,6 +43,8 @@ struct MainTabView: View {
                 pace: pace,
                 heartRateVariability: $heartRateVariability,
                 grade: $grade,
+                heartRate: $heartRate,
+                vo2Max: vo2Max,
                 lastGelTime: lastGelTime,
                 totalDistance: totalDistance,
                 runningSpeed: runningSpeed,
@@ -63,11 +70,12 @@ struct MainTabView_Previews: PreviewProvider {
             pace: 10.0,
             heartRateVariability: .constant(75),
             grade: .constant(0.05),
-            // Sample elapsed gel time (e.g., 0 seconds means no gel consumed yet)
+            vo2Max: 35.0,
             lastGelTime: 0,
             totalDistance: 3500,
             runningSpeed: 3.5,
             totalCaloriesBurned: 150,
+            heartRate: .constant(72),
             onManualGelHold: {},
             onStopRun: {}
         )

@@ -4,7 +4,14 @@ import WatchKit
 struct HomeView: View {
     @Binding var elapsedTime: TimeInterval
     let pace: Double?
+    
+    // NEW: We accept heartRate instead of using heartRateVariability
+    @Binding var heartRate: Double?
+    
+    // We still allow HRV if you want to display or handle it separately,
+    // but the user requested to show *heart rate* on the main page.
     @Binding var heartRateVariability: Double?
+    
     @Binding var grade: Double
     let lastGelTime: TimeInterval  // elapsed time when gel was taken
     
@@ -15,7 +22,7 @@ struct HomeView: View {
     @State private var holdProgress: CGFloat = 0.0
     @State private var holdTimer: Timer? = nil
     
-    // New state for pulsing the NRGRun image.
+    // Pulsing animation for the center icon
     @State private var isPulsing = false
     
     var body: some View {
@@ -25,12 +32,10 @@ struct HomeView: View {
             VStack(spacing: 4) {
                 // 1) Hold gesture area with ring and pulsing image
                 ZStack {
-                    // Background ring (faint)
                     Circle()
                         .stroke(Color.fromHex("#00FFC5").opacity(0.2), lineWidth: 6)
                         .frame(width: 80, height: 80)
                     
-                    // Animated progress ring that fills up over 3 seconds
                     Circle()
                         .trim(from: 0.0, to: holdProgress)
                         .stroke(Color.fromHex("#00FFC5"), style: StrokeStyle(lineWidth: 6, lineCap: .round))
@@ -38,7 +43,6 @@ struct HomeView: View {
                         .frame(width: 80, height: 80)
                         .animation(.linear, value: holdProgress)
                     
-                    // The NRGRun image that pulses
                     Image("NRGRun")
                         .resizable()
                         .scaledToFit()
@@ -50,7 +54,6 @@ struct HomeView: View {
                         }
                 }
                 .offset(y: -5)
-                // Use a DragGesture (with zero minimum distance) to track press start and end
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { _ in
@@ -74,7 +77,7 @@ struct HomeView: View {
                     .background(Color.gray)
                     .padding(.top, 8)
                 
-                // "Avg Pace" and "Last Gel" information.
+                // "Avg Pace" and "Last Gel" info
                 HStack(alignment: .top) {
                     VStack(spacing: 2) {
                         Text("Avg Pace")
@@ -109,7 +112,7 @@ struct HomeView: View {
                 
                 Spacer()
                 
-                // Bottom row: distance and heart rate.
+                // Bottom row: distance and heart rate
                 HStack {
                     Text("\(distanceString()) km")
                         .foregroundColor(.white)
@@ -121,8 +124,9 @@ struct HomeView: View {
                         Image(systemName: "heart.fill")
                             .foregroundColor(.red)
                         
-                        if let hrv = heartRateVariability {
-                            Text("\(Int(hrv))")
+                        // Display heartRate on the main page
+                        if let hr = heartRate {
+                            Text("\(Int(hr)) BPM")
                                 .foregroundColor(.white)
                         } else {
                             Text("--")
@@ -135,17 +139,16 @@ struct HomeView: View {
             }
         }
         .onAppear {
-            endHoldGesture() // Reset the progress ring when HomeView appears.
+            endHoldGesture()
         }
     }
     
     // MARK: - Hold Gesture Helpers
     
-    /// Starts a timer that increments `holdProgress` from 0 to 1 over 3 seconds.
     func startHoldTimer() {
         holdProgress = 0.0
         holdTimer = Timer.scheduledTimer(withTimeInterval: 0.01, repeats: true) { _ in
-            holdProgress += 0.01 / 3.0  // Linear increment over 3 seconds
+            holdProgress += 0.01 / 3.0
             if holdProgress >= 1.0 {
                 holdProgress = 1.0
                 WKInterfaceDevice.current().play(.success)
@@ -155,7 +158,6 @@ struct HomeView: View {
         }
     }
     
-    /// Ends the hold gesture and resets progress.
     func endHoldGesture() {
         holdTimer?.invalidate()
         holdTimer = nil
@@ -178,7 +180,6 @@ struct HomeView: View {
         return String(format: "%.2f", distanceInKm)
     }
     
-    // Formats a TimeInterval (seconds elapsed) as HH:mm:ss.
     func formatGelTime(_ interval: TimeInterval) -> String {
         let hours = Int(interval) / 3600
         let minutes = (Int(interval) % 3600) / 60
@@ -186,4 +187,3 @@ struct HomeView: View {
         return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
 }
-

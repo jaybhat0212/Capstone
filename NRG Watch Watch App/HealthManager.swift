@@ -15,12 +15,13 @@ class HealthManager {
             return
         }
         
-        // We read VO2Max, BodyMass, HRV, etc. No writes for now.
+        // We now also read heartRate in addition to HRV, VO2, etc.
         let typesToRead: Set<HKObjectType> = [
             HKObjectType.quantityType(forIdentifier: .vo2Max)!,
             HKObjectType.quantityType(forIdentifier: .bodyMass)!,
             HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!,
-            HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)! // optional if you want direct HK distance
+            HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
+            HKObjectType.quantityType(forIdentifier: .heartRate)!
         ]
         
         healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, _ in
