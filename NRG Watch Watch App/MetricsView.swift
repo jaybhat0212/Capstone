@@ -5,8 +5,16 @@ struct MetricsView: View {
     let pace: Double?
     @Binding var heartRateVariability: Double?
     @Binding var grade: Double
-    // Gel time passed as a TimeInterval (in seconds).
+    
+    // We add heartRate
+    @Binding var heartRate: Double?
+    
+    // The user’s VO₂ max
+    let vo2Max: Double?
+    
+    // Gel time in seconds
     let lastGelTime: TimeInterval
+    
     let totalDistance: Double
     let runningSpeed: Double?
     let totalCaloriesBurned: Double
@@ -18,10 +26,23 @@ struct MetricsView: View {
                 MetricRow(title: "Distance", value: String(format: "%.2f km", totalDistance / 1000.0))
                 MetricRow(title: "Pace", value: pace != nil ? String(format: "%.2f km/h", pace!) : "--")
                 MetricRow(title: "Running Speed", value: runningSpeed != nil ? String(format: "%.2f m/s", runningSpeed!) : "--")
-                MetricRow(title: "HRV", value: heartRateVariability != nil ? String(format: "%.0f", heartRateVariability!) : "--")
+                
+                // Display HRV
+                MetricRow(title: "HRV", value: heartRateVariability != nil ? String(format: "%.0f ms", heartRateVariability!) : "--")
+                
+                // Display Heart Rate
+                MetricRow(title: "Heart Rate", value: heartRate != nil ? String(format: "%.0f BPM", heartRate!) : "--")
+                
                 MetricRow(title: "Grade", value: String(format: "%.2f", grade))
-                // Display the gel consumption time in HH:mm:ss. If no gel, show "00:00:00".
-                MetricRow(title: "Last Gel", value: lastGelTime > 0 ? formatGelTime(lastGelTime) : "00:00:00")
+                
+                let displayedVO2 = vo2Max ?? 35.0
+                MetricRow(title: "VO₂ Max", value: String(format: "%.1f ml/kg/min", displayedVO2))
+                
+                MetricRow(
+                    title: "Last Gel",
+                    value: lastGelTime > 0 ? formatGelTime(lastGelTime) : "00:00:00"
+                )
+                
                 MetricRow(title: "Calories Burned", value: String(format: "%.0f kcal", totalCaloriesBurned))
             }
             .padding()
@@ -35,7 +56,6 @@ struct MetricsView: View {
         return String(format: "%02d:%02d", minutes, seconds)
     }
     
-    // Formats a TimeInterval as HH:mm:ss.
     func formatGelTime(_ interval: TimeInterval) -> String {
         let hours = Int(interval) / 3600
         let minutes = (Int(interval) % 3600) / 60
@@ -58,20 +78,5 @@ struct MetricRow: View {
                 .foregroundColor(.white)
                 .font(.system(size: 16, weight: .medium))
         }
-    }
-}
-
-struct MetricsView_Previews: PreviewProvider {
-    static var previews: some View {
-        MetricsView(
-            elapsedTime: .constant(125),
-            pace: 10.0,
-            heartRateVariability: .constant(75),
-            grade: .constant(0.05),
-            lastGelTime: 3500,
-            totalDistance: 3500,
-            runningSpeed: 3.5,
-            totalCaloriesBurned: 150
-        )
     }
 }

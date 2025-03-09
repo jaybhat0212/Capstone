@@ -24,7 +24,7 @@ struct FirstLaunchView: View {
                     .foregroundColor(.red)
                     .multilineTextAlignment(.center)
                 
-                Text("We'll use a default resting VO2 of 3.5 ml/kg/min.")
+                Text("We'll use a default VO₂ max of 35 ml/kg/min.")
                     .font(.subheadline)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
@@ -40,7 +40,7 @@ struct FirstLaunchView: View {
                 .clipped()
                 
                 Button("Continue") {
-                    restingVO2 = 3.5
+                    restingVO2 = 35.0
                     bodyMass = Double(selectedWeight)
                     isMetricsReady = true
                 }
@@ -61,13 +61,14 @@ struct FirstLaunchView: View {
                 }
                 return
             }
-            // Attempt to fetch VO2
+            // Attempt to fetch VO₂ max
             healthManager.fetchLatestData(for: .vo2Max,
                                           unit: HKUnit(from: "ml/kg*min")) { vo2 in
                 DispatchQueue.main.async {
                     if let vo2 = vo2 {
                         restingVO2 = vo2
                     } else {
+                        // If not found, show error so user can accept 35 ml/kg/min
                         showError = true
                     }
                 }
@@ -79,6 +80,7 @@ struct FirstLaunchView: View {
                     if let mass = mass {
                         bodyMass = mass
                     } else {
+                        // Also indicate error if body mass not fetched
                         showError = true
                     }
                 }

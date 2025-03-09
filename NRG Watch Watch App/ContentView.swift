@@ -19,6 +19,9 @@ struct ContentView: View {
     @State private var elapsedTime: TimeInterval = 0
     @State private var runningSpeed: Double? = nil
     @State private var heartRateVariability: Double? = nil
+    // NEW: Track heartRate
+    @State private var heartRate: Double? = nil
+    
     @State private var totalDistance: Double = 0
     @State private var grade: Double = 0
     @State private var totalCaloriesBurned: Double = 0
@@ -69,10 +72,13 @@ struct ContentView: View {
                     pace: computedPace,
                     heartRateVariability: $heartRateVariability,
                     grade: $grade,
+                    vo2Max: restingVO2,
                     lastGelTime: lastSupplementIntakeTime,
                     totalDistance: totalDistance,
                     runningSpeed: runningSpeed,
                     totalCaloriesBurned: totalCaloriesBurned,
+                    // Pass the new heartRate binding
+                    heartRate: $heartRate,
                     onManualGelHold: {
                         supplementSource = .manual
                         showSupplementConsumed = true
@@ -106,6 +112,7 @@ struct ContentView: View {
     
     private var computedPace: Double? {
         guard elapsedTime > 0 else { return nil }
+        // totalDistance is in meters, so pace in m/s => converting to km/s => km/h
         return totalDistance / elapsedTime
     }
     
@@ -116,8 +123,6 @@ struct ContentView: View {
         elapsedTime = 0
         totalDistance = 0
         totalCaloriesBurned = 0
-        
-        // When starting a run, no gel has been taken yet.
         lastSupplementIntakeTime = 0
         
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
@@ -126,13 +131,15 @@ struct ContentView: View {
             checkSupplementConditions()
         }
         
-        motionManager.startUpdates { distance, speed, floorsAscDesc, hrv in
+        // Extended completion to read HR as the 5th parameter
+        motionManager.startUpdates { distance, speed, floorsAscDesc, hrv, hr in
             DispatchQueue.main.async {
                 self.totalDistance = distance ?? 0
                 self.runningSpeed = speed ?? 0
                 self.grade = convertFloorsToGrade(floorsAscDesc)
                 self.heartRateVariability = hrv
-                accumulateCalories()
+                self.heartRate = hr
+                self.accumulateCalories()
             }
         }
     }
@@ -146,6 +153,7 @@ struct ContentView: View {
         totalCaloriesBurned = 0
         runningSpeed = nil
         heartRateVariability = nil
+        heartRate = nil
         grade = 0
     }
     
@@ -161,7 +169,7 @@ struct ContentView: View {
             triggerSupplementAlert()
             return
         }
-        // Condition: over 120 kcal burned and at least 30 minutes (1800 seconds) since last gel.
+        // Condition: over 120 kcal burned and at least 30 minutes (1800 sec) since last gel.
         if totalCaloriesBurned >= 120 && currentElapsed >= lastSupplementIntakeTime + 1800 {
             triggerSupplementAlert()
             return
@@ -175,19 +183,16 @@ struct ContentView: View {
         showSupplementView = true
     }
     
-    // Updated: Finalize supplement intake immediately updates the displayed elapsed time.
     func finalizeSupplementIntake() {
         if let startTime = startTime {
-            // Recalculate the current elapsed time right now.
             let currentElapsed = Date().timeIntervalSince(startTime)
-            // Update both elapsedTime and lastSupplementIntakeTime immediately.
             elapsedTime = currentElapsed
             lastSupplementIntakeTime = currentElapsed
             gelIntakeTimes.append(currentElapsed)
         }
         totalCaloriesBurned = 0
         
-        // Restart timer if needed.
+        // Restart timer if needed
         if startTime != nil, timer == nil {
             timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
                 guard let startTime = startTime else { return }
@@ -224,11 +229,5 @@ struct ContentView: View {
         let kcalPerMin = litersO2PerMin * 4.9
         let kcalPerSecond = kcalPerMin / 60.0
         totalCaloriesBurned += kcalPerSecond
-    }
-}
-
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
     }
 }
