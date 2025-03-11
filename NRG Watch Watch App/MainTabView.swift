@@ -5,8 +5,7 @@ struct MainTabView: View {
     let pace: Double?
     @Binding var heartRateVariability: Double?
     @Binding var grade: Double
-    
-    let vo2Max: Double?
+    @Binding var vo2Max: Double?
     
     let lastGelTime: TimeInterval
     
@@ -42,9 +41,9 @@ struct MainTabView: View {
                 elapsedTime: $elapsedTime,
                 pace: pace,
                 heartRateVariability: $heartRateVariability,
-                grade: $grade,
                 heartRate: $heartRate,
-                vo2Max: vo2Max,
+                vo2Max: $vo2Max,
+                grade: $grade,
                 lastGelTime: lastGelTime,
                 totalDistance: totalDistance,
                 runningSpeed: runningSpeed,
@@ -70,7 +69,7 @@ struct MainTabView_Previews: PreviewProvider {
             pace: 10.0,
             heartRateVariability: .constant(75),
             grade: .constant(0.05),
-            vo2Max: 35.0,
+            vo2Max: .constant(35),
             lastGelTime: 0,
             totalDistance: 3500,
             runningSpeed: 3.5,

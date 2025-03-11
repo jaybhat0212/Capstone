@@ -19,18 +19,21 @@ struct ContentView: View {
     @State private var elapsedTime: TimeInterval = 0
     @State private var runningSpeed: Double? = nil
     @State private var heartRateVariability: Double? = nil
-    // NEW: Track heartRate
     @State private var heartRate: Double? = nil
-    
     @State private var totalDistance: Double = 0
     @State private var grade: Double = 0
     @State private var totalCaloriesBurned: Double = 0
     
+    // --------------------------------------------
+    // IMPORTANT: We add a @State for vo2Max
+    // --------------------------------------------
+    @State private var vo2Max: Double? = nil
+    
     @State private var startTime: Date? = nil
     @State private var timer: Timer? = nil
-    // Gel consumption time (in elapsed seconds) for the last gel taken.
+    
+    // Gel consumption times
     @State private var lastSupplementIntakeTime: TimeInterval = 0
-    // Array to store every gel intake event (the elapsed time when each gel was taken).
     @State private var gelIntakeTimes: [TimeInterval] = []
     
     // Managers
@@ -72,12 +75,11 @@ struct ContentView: View {
                     pace: computedPace,
                     heartRateVariability: $heartRateVariability,
                     grade: $grade,
-                    vo2Max: restingVO2,
+                    vo2Max: $vo2Max,
                     lastGelTime: lastSupplementIntakeTime,
                     totalDistance: totalDistance,
                     runningSpeed: runningSpeed,
                     totalCaloriesBurned: totalCaloriesBurned,
-                    // Pass the new heartRate binding
                     heartRate: $heartRate,
                     onManualGelHold: {
                         supplementSource = .manual
@@ -109,10 +111,9 @@ struct ContentView: View {
     }
     
     // MARK: - Computed Properties
-    
     private var computedPace: Double? {
         guard elapsedTime > 0 else { return nil }
-        // totalDistance is in meters, so pace in m/s => converting to km/s => km/h
+        // totalDistance is in meters -> pace in m/s => converting to km/h
         return totalDistance / elapsedTime
     }
     
@@ -131,14 +132,21 @@ struct ContentView: View {
             checkSupplementConditions()
         }
         
-        // Extended completion to read HR as the 5th parameter
-        motionManager.startUpdates { distance, speed, floorsAscDesc, hrv, hr in
+        // ---------------------------------------------------------------------
+        // START MOTION UPDATES, retrieving distance, speed, floorsAscDesc, HRV, HR, VO2
+        // ---------------------------------------------------------------------
+        motionManager.startUpdates { dist, speed, floorsAscDesc, hrv, hr, vo2 in
             DispatchQueue.main.async {
-                self.totalDistance = distance ?? 0
+                self.totalDistance = dist ?? 0
                 self.runningSpeed = speed ?? 0
                 self.grade = convertFloorsToGrade(floorsAscDesc)
+                
                 self.heartRateVariability = hrv
                 self.heartRate = hr
+                
+                // This updates self.vo2Max in real time
+                self.vo2Max = vo2
+                
                 self.accumulateCalories()
             }
         }
@@ -154,22 +162,20 @@ struct ContentView: View {
         runningSpeed = nil
         heartRateVariability = nil
         heartRate = nil
+        vo2Max = nil
         grade = 0
     }
     
-    // For testing, trigger the supplement alert every 30 seconds.
     func checkSupplementConditions() {
         let currentElapsed = elapsedTime
-        if currentElapsed >= lastSupplementIntakeTime + 30 {
+        if currentElapsed >= lastSupplementIntakeTime + 2700 {
             triggerSupplementAlert()
             return
         }
-        // HRV condition.
-        if let hrv = heartRateVariability, hrv < 65 {
+        if let hrv = heartRateVariability, hrv > 65 {
             triggerSupplementAlert()
             return
         }
-        // Condition: over 120 kcal burned and at least 30 minutes (1800 sec) since last gel.
         if totalCaloriesBurned >= 120 && currentElapsed >= lastSupplementIntakeTime + 1800 {
             triggerSupplementAlert()
             return
@@ -192,7 +198,6 @@ struct ContentView: View {
         }
         totalCaloriesBurned = 0
         
-        // Restart timer if needed
         if startTime != nil, timer == nil {
             timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
                 guard let startTime = startTime else { return }
