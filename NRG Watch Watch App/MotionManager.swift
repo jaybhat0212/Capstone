@@ -5,132 +5,155 @@ class MotionManager {
     private let pedometer = CMPedometer()
     private let healthStore = HKHealthStore()
     
-    // Query for HRV
+    // Queries for HRV, Heart Rate, and VO2 Max
     private var hrvQuery: HKAnchoredObjectQuery?
-    // Now we also track heart rate
     private var heartRateQuery: HKAnchoredObjectQuery?
+    private var vo2Query: HKAnchoredObjectQuery?
     
-    // Baseline readings for distance and floors, so we only get the changes
-    private var initialDistance: Double?
-    private var initialFloorsAscended: Int?
-    private var initialFloorsDescended: Int?
-
-    /// - Parameter completion: (distance in meters, speed in m/s, floorsAscDesc, hrv in ms, heartRate in BPM)
-    func startUpdates(completion: @escaping (Double?, Double?, Double?, Double?, Double?) -> Void) {
-        guard CMPedometer.isDistanceAvailable(),
-              CMPedometer.isFloorCountingAvailable()
-        else {
+    // Store the latest values so we can always send complete data back
+    private var latestDistance: Double = 0.0
+    private var latestSpeed: Double = 0.0
+    private var latestFloorsAscDesc: Double = 0.0
+    private var latestHRV: Double?
+    private var latestHR: Double?
+    private var latestVO2Max: Double?
+    
+    // The completion closure we’ll call any time something updates
+    // Includes VO2 Max as the 6th parameter now
+    private var updateCompletion: ((Double?, Double?, Double?, Double?, Double?, Double?) -> Void)?
+    
+    /// Starts pedometer and HealthKit queries for real-time updates.
+    /// - Parameter completion: Receives updated values (distance, speed, floorsAscDesc, hrv, hr, vo2Max).
+    func startUpdates(completion: @escaping (Double?, Double?, Double?, Double?, Double?, Double?) -> Void) {
+        self.updateCompletion = completion
+        
+        // 1) Start pedometer for distance, floors, etc.
+        guard CMPedometer.isDistanceAvailable() && CMPedometer.isFloorCountingAvailable() else {
             print("Pedometer features not available.")
             return
         }
         
-        // Start pedometer for distance, floors, etc.
-        pedometer.startUpdates(from: Date()) { data, error in
+        pedometer.startUpdates(from: Date()) { [weak self] data, error in
+            guard let self = self else { return }
             if let error = error {
                 print("MotionManager pedometer error: \(error.localizedDescription)")
             }
             
-            // Raw distance
-            let rawDistance = data?.distance?.doubleValue
-            
-            var distance: Double? = nil
-            if let dist = rawDistance {
-                if self.initialDistance == nil {
-                    self.initialDistance = dist
-                }
-                distance = max(0, dist - (self.initialDistance ?? 0))
+            // Distance
+            if let dist = data?.distance?.doubleValue {
+                self.latestDistance = dist
             }
             
-            // speed = 1 ÷ currentPace (m/s)
-            var speedMS: Double?
+            // Speed in m/s (1 ÷ currentPace)
             if let pace = data?.currentPace?.doubleValue, pace > 0 {
-                speedMS = 1.0 / pace
+                self.latestSpeed = 1.0 / pace
             }
             
+            // Floors ascended - floors descended
             let asc = data?.floorsAscended?.intValue ?? 0
             let desc = data?.floorsDescended?.intValue ?? 0
+            self.latestFloorsAscDesc = Double(asc - desc)
             
-            if self.initialFloorsAscended == nil {
-                self.initialFloorsAscended = asc
-            }
-            if self.initialFloorsDescended == nil {
-                self.initialFloorsDescended = desc
-            }
-            
-            let ascDelta = asc - (self.initialFloorsAscended ?? 0)
-            let descDelta = desc - (self.initialFloorsDescended ?? 0)
-            let floorsAscDesc = Double(ascDelta - descDelta)
-            
-            // For the anchored queries, we pass nil here (they update in their own query).
-            completion(distance, speedMS, floorsAscDesc, nil, nil)
+            self.sendUpdate()
         }
         
-        // ---------------------------------------------------------------------
-        // Heart Rate Variability anchored query
+        // 2) HRV anchored query
         guard let hrvType = HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN) else { return }
         
-        let hrvQuery = HKAnchoredObjectQuery(
-            type: hrvType,
-            predicate: nil,
-            anchor: nil,
-            limit: HKObjectQueryNoLimit
-        ) { _, samples, _, _, _ in
-            if let hrvSample = samples?.last as? HKQuantitySample {
-                let hrvValue = hrvSample.quantity.doubleValue(for: .secondUnit(with: .milli))
-                completion(nil, nil, nil, hrvValue, nil)
+        let hrvQuery = HKAnchoredObjectQuery(type: hrvType, predicate: nil, anchor: nil, limit: HKObjectQueryNoLimit) {
+            [weak self] _, samples, _, _, _ in
+            guard let self = self else { return }
+            if let sample = samples?.last as? HKQuantitySample {
+                self.latestHRV = sample.quantity.doubleValue(for: .secondUnit(with: .milli))
+                self.sendUpdate()
             }
         }
         
-        hrvQuery.updateHandler = { _, samples, _, _, _ in
-            if let hrvSample = samples?.last as? HKQuantitySample {
-                let hrvValue = hrvSample.quantity.doubleValue(for: .secondUnit(with: .milli))
-                completion(nil, nil, nil, hrvValue, nil)
+        hrvQuery.updateHandler = { [weak self] _, samples, _, _, _ in
+            guard let self = self else { return }
+            if let sample = samples?.last as? HKQuantitySample {
+                self.latestHRV = sample.quantity.doubleValue(for: .secondUnit(with: .milli))
+                self.sendUpdate()
             }
         }
-        
         healthStore.execute(hrvQuery)
         self.hrvQuery = hrvQuery
         
-        // ---------------------------------------------------------------------
-        // Heart Rate anchored query
+        // 3) Heart Rate anchored query
         guard let hrType = HKObjectType.quantityType(forIdentifier: .heartRate) else { return }
         
-        let hrQuery = HKAnchoredObjectQuery(
-            type: hrType,
-            predicate: nil,
-            anchor: nil,
-            limit: HKObjectQueryNoLimit
-        ) { _, samples, _, _, _ in
-            if let hrSample = samples?.last as? HKQuantitySample {
-                // Heart rate is usually stored in "count/min" units
-                let hrValue = hrSample.quantity.doubleValue(for: .init(from: "count/min"))
-                completion(nil, nil, nil, nil, hrValue)
+        let hrQuery = HKAnchoredObjectQuery(type: hrType, predicate: nil, anchor: nil, limit: HKObjectQueryNoLimit) {
+            [weak self] _, samples, _, _, _ in
+            guard let self = self else { return }
+            if let sample = samples?.last as? HKQuantitySample {
+                self.latestHR = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
+                self.sendUpdate()
             }
         }
         
-        hrQuery.updateHandler = { _, samples, _, _, _ in
-            if let hrSample = samples?.last as? HKQuantitySample {
-                let hrValue = hrSample.quantity.doubleValue(for: .init(from: "count/min"))
-                completion(nil, nil, nil, nil, hrValue)
+        hrQuery.updateHandler = { [weak self] _, samples, _, _, _ in
+            guard let self = self else { return }
+            if let sample = samples?.last as? HKQuantitySample {
+                self.latestHR = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
+                self.sendUpdate()
             }
         }
-        
         healthStore.execute(hrQuery)
         self.heartRateQuery = hrQuery
-    }
-    
-    func stopUpdates() {
-        pedometer.stopUpdates()
-        if let query = hrvQuery {
-            healthStore.stop(query)
-        }
-        if let query = heartRateQuery {
-            healthStore.stop(query)
+        
+        // 4) VO2 Max anchored query
+        guard let vo2Type = HKObjectType.quantityType(forIdentifier: .vo2Max) else { return }
+        
+        let vo2Query = HKAnchoredObjectQuery(type: vo2Type, predicate: nil, anchor: nil, limit: HKObjectQueryNoLimit) {
+            [weak self] _, samples, _, _, _ in
+            guard let self = self else { return }
+            if let sample = samples?.last as? HKQuantitySample {
+                // Convert to ml/kg*min
+                let vo2Value = sample.quantity.doubleValue(for: HKUnit(from: "ml/kg*min"))
+                self.latestVO2Max = vo2Value
+                self.sendUpdate()
+            }
         }
         
-        // Reset baselines
-        initialDistance = nil
-        initialFloorsAscended = nil
-        initialFloorsDescended = nil
+        vo2Query.updateHandler = { [weak self] _, samples, _, _, _ in
+            guard let self = self else { return }
+            if let sample = samples?.last as? HKQuantitySample {
+                let vo2Value = sample.quantity.doubleValue(for: HKUnit(from: "ml/kg*min"))
+                self.latestVO2Max = vo2Value
+                self.sendUpdate()
+            }
+        }
+        healthStore.execute(vo2Query)
+        self.vo2Query = vo2Query
+    }
+    
+    /// Stops pedometer and queries.
+    func stopUpdates() {
+        pedometer.stopUpdates()
+        
+        if let hrvQ = hrvQuery { healthStore.stop(hrvQ) }
+        if let hrQ = heartRateQuery { healthStore.stop(hrQ) }
+        if let vo2Q = vo2Query { healthStore.stop(vo2Q) }
+        
+        // Reset everything
+        latestDistance = 0
+        latestSpeed = 0
+        latestFloorsAscDesc = 0
+        latestHRV = nil
+        latestHR = nil
+        latestVO2Max = nil
+    }
+    
+    /// Utility to call the completion with all current data
+    private func sendUpdate() {
+        // Now includes latestVO2Max as 6th param
+        updateCompletion?(
+            latestDistance,
+            latestSpeed,
+            latestFloorsAscDesc,
+            latestHRV,
+            latestHR,
+            latestVO2Max
+        )
     }
 }

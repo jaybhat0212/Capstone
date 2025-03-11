@@ -1,0 +1,10 @@
+//
+//  .gitignore
+//  NRG
+//
+//  Created by Tahsin Hassan on 2025-03-11.
+//
+
+*.xcuserstate
+project.xcworkspace/
+xcuserdata/
