@@ -1,59 +1,77 @@
 //
-//  HealthManager.swift
-//  NRG
+//  WatchHealthManager.swift
+//  NRG Watch Watch App
 //
-//  Handles HealthKit permissions and fetching of basic metrics like VO2, body mass.
+//  Created by ...
 //
-import HealthKit
 
-class HealthManager {
+import HealthKit
+import WatchConnectivity
+import SwiftUI
+
+class HealthManager: NSObject, ObservableObject, WCSessionDelegate {
     let healthStore = HKHealthStore()
-    
+
+    // Store phone-synced data, e.g. gel calories
+    @Published var phoneGelCalories: Int = 75
+
+    override init() {
+        super.init()
+        setupWatchConnectivity()
+    }
+
+    // MARK: - WatchConnectivity
+    func setupWatchConnectivity() {
+        if WCSession.isSupported() {
+            let session = WCSession.default
+            session.delegate = self
+            session.activate()
+        }
+    }
+
+    // MARK: - HealthKit Request
+    /// Call this from your ContentView onAppear to request read access on watch.
     func requestAuthorization(completion: @escaping (Bool) -> Void) {
         guard HKHealthStore.isHealthDataAvailable() else {
             completion(false)
             return
         }
-        
-        // We now also read heartRate in addition to HRV, VO2, etc.
+
+        // Decide which types you want to read from watch’s local HealthKit store:
         let typesToRead: Set<HKObjectType> = [
-            HKObjectType.quantityType(forIdentifier: .vo2Max)!,
-            HKObjectType.quantityType(forIdentifier: .bodyMass)!,
-            HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!,
-            HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
-            HKObjectType.quantityType(forIdentifier: .heartRate)!
+            HKObjectType.quantityType(forIdentifier: .heartRate)!,
+            HKObjectType.quantityType(forIdentifier: .vo2Max)!
+            // Add others if needed, e.g. HRV, distanceWalkingRunning, etc.
         ]
-        
-        healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, _ in
+
+        healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, error in
+            if let error = error {
+                print("Watch HealthKit auth error: \(error.localizedDescription)")
+            }
             completion(success)
         }
     }
-    
-    // Generic fetch for latest data sample
-    func fetchLatestData(for identifier: HKQuantityTypeIdentifier,
-                         unit: HKUnit,
-                         completion: @escaping (Double?) -> Void) {
-        
-        guard let quantityType = HKObjectType.quantityType(forIdentifier: identifier) else {
-            completion(nil)
-            return
-        }
-        
-        let now = Date()
-        let predicate = HKQuery.predicateForSamples(withStart: Calendar.current.startOfDay(for: now),
-                                                    end: now,
-                                                    options: .strictStartDate)
-        
-        // We only retrieve the most recent for the day
-        let query = HKStatisticsQuery(quantityType: quantityType,
-                                      quantitySamplePredicate: predicate,
-                                      options: .mostRecent) { _, result, _ in
-            if let quantity = result?.mostRecentQuantity() {
-                completion(quantity.doubleValue(for: unit))
-            } else {
-                completion(nil)
+
+    // MARK: - WCSessionDelegate
+    func session(_ session: WCSession, didReceiveMessage message: [String : Any]) {
+        // If the phone sends 'gelCalories', store it:
+        if let newCals = message["gelCalories"] as? Int {
+            DispatchQueue.main.async {
+                self.phoneGelCalories = newCals
+                print("Watch got new gelCalories from phone: \(newCals)")
             }
         }
-        healthStore.execute(query)
+
+        // If you also handle weight, HRV, VO2, etc., you'd process them here as well.
     }
+
+    func session(
+        _ session: WCSession,
+        activationDidCompleteWith state: WCSessionActivationState,
+        error: Error?
+    ) {
+        // If needed, handle session activation results
+    }
+
+    // Note: watchOS does not allow sessionDidBecomeInactive / sessionDidDeactivate overrides
 }
