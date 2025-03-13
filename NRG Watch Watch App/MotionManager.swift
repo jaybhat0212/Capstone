@@ -60,22 +60,31 @@ class MotionManager {
         // 2) HRV anchored query
         guard let hrvType = HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN) else { return }
         
-        let hrvQuery = HKAnchoredObjectQuery(type: hrvType, predicate: nil, anchor: nil, limit: HKObjectQueryNoLimit) {
-            [weak self] _, samples, _, _, _ in
+        let hrvQuery = HKAnchoredObjectQuery(type: hrvType, predicate: nil, anchor: nil, limit: HKObjectQueryNoLimit) { [weak self] (_, samples, _, newAnchor, error) in
             guard let self = self else { return }
+            print("Initial HRV Query - samples: \(samples?.count ?? 0)")
+
             if let sample = samples?.last as? HKQuantitySample {
-                self.latestHRV = sample.quantity.doubleValue(for: .secondUnit(with: .milli))
+                let hrvValue = sample.quantity.doubleValue(for: .secondUnit(with: .milli))
+                print("Initial HRV sample: \(hrvValue) ms")
+                self.latestHRV = hrvValue
                 self.sendUpdate()
             }
         }
-        
-        hrvQuery.updateHandler = { [weak self] _, samples, _, _, _ in
+        hrvQuery.updateHandler = { [weak self] (_, samples, _, newAnchor, error) in
             guard let self = self else { return }
+            print("HRV Update Handler - samples: \(samples?.count ?? 0)")
+
             if let sample = samples?.last as? HKQuantitySample {
-                self.latestHRV = sample.quantity.doubleValue(for: .secondUnit(with: .milli))
+                let hrvValue = sample.quantity.doubleValue(for: .secondUnit(with: .milli))
+                print("New HRV sample: \(hrvValue) ms")
+                self.latestHRV = hrvValue
                 self.sendUpdate()
+            } else {
+                print("No new HRV sample in update.")
             }
         }
+
         healthStore.execute(hrvQuery)
         self.hrvQuery = hrvQuery
         
@@ -103,23 +112,53 @@ class MotionManager {
         
         // 4) VO2 Max anchored query
         guard let vo2Type = HKObjectType.quantityType(forIdentifier: .vo2Max) else { return }
-        
-        let vo2Query = HKAnchoredObjectQuery(type: vo2Type, predicate: nil, anchor: nil, limit: HKObjectQueryNoLimit) {
-            [weak self] _, samples, _, _, _ in
+
+        let vo2Query = HKAnchoredObjectQuery(
+            type: vo2Type,
+            predicate: nil,
+            anchor: nil,
+            limit: HKObjectQueryNoLimit
+        ) { [weak self] _, samples, _, newAnchor, error in
             guard let self = self else { return }
+            if let error = error {
+                print("VO2 initial query error: \(error.localizedDescription)")
+                return
+            }
+            
+            print("Initial VO2 Query - samples: \(samples?.count ?? 0)")
+            
             if let sample = samples?.last as? HKQuantitySample {
-                // Convert to ml/kg*min
                 let vo2Value = sample.quantity.doubleValue(for: HKUnit(from: "ml/kg*min"))
+                print("Initial VO2 sample: \(vo2Value) ml/kg/min")
                 self.latestVO2Max = vo2Value
+                self.sendUpdate()
+            } else {
+                // No samples found initially => fallback to 35
+                print("No VO2 samples found initially; using fallback = 35 ml/kg/min.")
+                self.latestVO2Max = 35
                 self.sendUpdate()
             }
         }
-        
-        vo2Query.updateHandler = { [weak self] _, samples, _, _, _ in
+
+        // Then in the update handler:
+        vo2Query.updateHandler = { [weak self] _, samples, _, newAnchor, error in
             guard let self = self else { return }
+            if let error = error {
+                print("VO2 update error: \(error.localizedDescription)")
+                return
+            }
+            
+            print("VO2 update handler - new samples count: \(samples?.count ?? 0)")
+            
             if let sample = samples?.last as? HKQuantitySample {
                 let vo2Value = sample.quantity.doubleValue(for: HKUnit(from: "ml/kg*min"))
+                print("New VO2 sample: \(vo2Value) ml/kg/min")
                 self.latestVO2Max = vo2Value
+                self.sendUpdate()
+            } else {
+                // No new VO2 sample in update => fallback
+                print("No new VO2 sample in update; using fallback = 35 ml/kg/min.")
+                self.latestVO2Max = 35
                 self.sendUpdate()
             }
         }
