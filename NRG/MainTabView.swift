@@ -1,10 +1,16 @@
 import SwiftUI
 
 struct MainTabView: View {
+    init() {
+        let appearance = UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor.black
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+    }
+
     var body: some View {
-        // A TabView creates a bottom tab bar for iOS
         TabView {
-            // -- Tab 1: Home --
             NavigationStack {
                 HomeView()
             }
@@ -12,7 +18,6 @@ struct MainTabView: View {
                 Label("Home", systemImage: "house")
             }
 
-            // -- Tab 2: Profile --
             NavigationStack {
                 ProfileView()
             }
@@ -20,11 +25,5 @@ struct MainTabView: View {
                 Label("Profile", systemImage: "person.crop.circle")
             }
         }
-    }
-}
-
-struct MainTabView_Previews: PreviewProvider {
-    static var previews: some View {
-        MainTabView()
     }
 }

@@ -32,9 +32,9 @@ struct HomeView: View {
             let hours = totalTimeInMinutes / 60
             let minutes = totalTimeInMinutes % 60
             if hours > 0 {
-                return "\(hours)h \(minutes)m"
+                return "\(hours)h \(minutes)min"
             } else {
-                return "\(minutes)m"
+                return "\(minutes)min"
             }
         }
     }
@@ -42,7 +42,8 @@ struct HomeView: View {
     @State private var runs: [Run] = [
         Run(date: makeDate(year: 2025, month: 1, day: 1, hour: 9, minute: 14), totalTimeInMinutes: 23, pace: 4.55, distance: 5.22, gels: 1),
         Run(date: makeDate(year: 2025, month: 1, day: 2, hour: 19, minute: 9), totalTimeInMinutes: 111, pace: 5.55, distance: 20.8, gels: 3),
-        Run(date: makeDate(year: 2025, month: 1, day: 2, hour: 14, minute: 0), totalTimeInMinutes: 45, pace: 5.00, distance: 7.3, gels: 2)
+        Run(date: makeDate(year: 2025, month: 1, day: 2, hour: 14, minute: 0), totalTimeInMinutes: 45, pace: 5.00, distance: 7.3, gels: 2),
+        Run(date: makeDate(year: 2025, month: 1, day: 3, hour: 8, minute: 30), totalTimeInMinutes: 60, pace: 4.75, distance: 10.2, gels: 2) // 4th run added
     ]
     
     var body: some View {
@@ -50,7 +51,7 @@ struct HomeView: View {
             Color.black.ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // -- Unified Header --
+                // -- Header (Stays Fixed) --
                 HStack {
                     Image("NRGLogo")
                         .resizable()
@@ -60,17 +61,25 @@ struct HomeView: View {
                 }
                 .padding(.horizontal, 16)
                 .frame(height: 60)
-                .background(Color(red: 0.15, green: 0.15, blue: 0.15))
-                
+//                .background(Color(red: 0.15, green: 0.15, blue: 0.15))
+                .background(Color.black)
+
+                // -- Scrollable Content (Starts Lower) --
                 ScrollView {
                     VStack(spacing: 16) {
+                        
                         ForEach(runs) { run in
                             RunCard(run: run)
                         }
+                        
+                        Color.clear.frame(height: 60) // Ensures last card isn't too close to footer
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
                 }
+                .padding(.top, 20)
+                .padding(.bottom, 15)// Pushes the whole scroll view lower
+            
             }
         }
     }
@@ -78,72 +87,90 @@ struct HomeView: View {
 
 struct RunCard: View {
     let run: HomeView.Run
-    
+
+    @State private var isPressed = false // For hover effect
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "figure.run")
-                    .resizable()
-                    .frame(width: 20, height: 20)
-                    .foregroundColor(.white)
+        NavigationLink(destination: RunDetailView(run: run)) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    Image(systemName: "figure.run")
+                        .resizable()
+                        .frame(width: 30, height: 30)
+                        .foregroundColor(.white)
+                    
+                    Text(run.fullDateString)
+                        .font(.headline)
+                        .foregroundColor(.white.opacity(0.9))
+                }
                 
-                Text(run.fullDateString)
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
+                Text(run.timeOfDayString)
+                    .font(.title2)
+                    .foregroundColor(.white)
+                    .bold()
+                
+                VStack(spacing: 12) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Time")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.7))
+                            Text(run.timeDisplay)
+                                .font(.title3)
+                                .foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("Distance")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.7))
+                            Text(String(format: "%.2f km", run.distance))
+                                .font(.title3)
+                                .foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Pace")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.7))
+                            Text("\(paceString(from: run.pace)) /km")
+                                .font(.title3)
+                                .foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("Gels Taken")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.7))
+                            Text(run.gels == 1 ? "1 gel" : "\(run.gels) gels")
+                                .font(.title3)
+                                .foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                }
             }
-            
-            Text(run.timeOfDayString)
-                .font(.title3)
-                .foregroundColor(.white)
-                .bold()
-            
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Time")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.6))
-                    Text(run.timeDisplay)
-                        .foregroundColor(.white)
-                        .font(.body)
-                }
-                Spacer()
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Distance")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.6))
-                    Text(String(format: "%.2f km", run.distance))
-                        .foregroundColor(.white)
-                        .font(.body)
-                }
-            }
-            
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Pace")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.6))
-                    Text("\(paceString(from: run.pace)) /km")
-                        .foregroundColor(.white)
-                        .font(.body)
-                }
-                Spacer()
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Gels Taken")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.6))
-                    Text("\(run.gels) gels")
-                        .foregroundColor(.white)
-                        .font(.body)
-                }
-            }
+            .padding()
+            .frame(maxWidth: .infinity)
+            .background(isPressed ? Color.gray.opacity(0.3) : Color(red: 0.15, green: 0.15, blue: 0.15))
+            .cornerRadius(12)
+            .shadow(radius: 5)
+            .scaleEffect(isPressed ? 0.98 : 1.0) // Slight press animation
+            .animation(.easeInOut(duration: 0.15), value: isPressed)
         }
-        .padding()
-        .frame(maxWidth: .infinity)
-        .background(Color(red: 0.15, green: 0.15, blue: 0.15))
-        .cornerRadius(8)
-        .shadow(radius: 4)
+        .buttonStyle(PlainButtonStyle()) // Removes default NavigationLink style
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
     }
-    
+
     private func paceString(from decimalPace: Double) -> String {
         let minutes = Int(decimalPace)
         let fractional = decimalPace - Double(minutes)
