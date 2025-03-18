@@ -40,10 +40,10 @@ struct HomeView: View {
     }
     
     @State private var runs: [Run] = [
-        Run(date: makeDate(year: 2025, month: 1, day: 1, hour: 9, minute: 14), totalTimeInMinutes: 23, pace: 4.55, distance: 5.22, gels: 1),
-        Run(date: makeDate(year: 2025, month: 1, day: 2, hour: 19, minute: 9), totalTimeInMinutes: 111, pace: 5.55, distance: 20.8, gels: 3),
-        Run(date: makeDate(year: 2025, month: 1, day: 2, hour: 14, minute: 0), totalTimeInMinutes: 45, pace: 5.00, distance: 7.3, gels: 2),
-        Run(date: makeDate(year: 2025, month: 1, day: 3, hour: 8, minute: 30), totalTimeInMinutes: 60, pace: 4.75, distance: 10.2, gels: 2) // 4th run added
+        Run(date: makeDate(year: 2025, month: 2, day: 17, hour: 9, minute: 14), totalTimeInMinutes: 39, pace: 4.55, distance: 8.57, gels: 1),
+        Run(date: makeDate(year: 2025, month: 2, day: 27, hour: 19, minute: 9), totalTimeInMinutes: 111, pace: 5.55, distance: 20.8, gels: 3),
+        Run(date: makeDate(year: 2025, month: 3, day: 2, hour: 14, minute: 0), totalTimeInMinutes: 134, pace: 6.00, distance: 22.4, gels: 3),
+        Run(date: makeDate(year: 2025, month: 3, day: 3, hour: 8, minute: 30), totalTimeInMinutes: 60, pace: 4.75, distance: 10.2, gels: 2) // 4th run added
     ]
     
     var body: some View {
