@@ -133,7 +133,8 @@ struct ProfileView: View {
             }
             .padding(.horizontal, 16)
             .frame(height: 60)
-            .background(Color(red: 0.15, green: 0.15, blue: 0.15))
+//            .background(Color(red: 0.15, green: 0.15, blue: 0.15))
+            .background(Color.black)
             
             // -- Main Content (black background) --
             ZStack {
