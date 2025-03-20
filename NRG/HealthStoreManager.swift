@@ -18,6 +18,7 @@ class HealthStoreManager: NSObject, ObservableObject, WCSessionDelegate {
     @Published var restingVO2: Double = 0.0
     @Published var heartRateVariability: Double = 0.0
     @Published var elevationChange: Double = 0.0
+    @Published var gelCalories: Int = 75
 
     private var session: WCSession?
 
@@ -207,13 +208,35 @@ class HealthStoreManager: NSObject, ObservableObject, WCSessionDelegate {
         healthStore.execute(query)
     }
 
-    // MARK: - WCSessionDelegate (on iPhone)
+    // MARK: - WCSessionDelegate Methods (REQUIRED on iPhone)
     func session(_ session: WCSession,
                  activationDidCompleteWith state: WCSessionActivationState,
-                 error: Error?) {}
+                 error: Error?)
+    {
+        // Usually you can leave this empty, or handle errors if needed
+    }
 
-    func sessionDidBecomeInactive(_ session: WCSession) {}
+    func sessionDidBecomeInactive(_ session: WCSession) {
+        // Required method; empty implementation is OK
+    }
+
     func sessionDidDeactivate(_ session: WCSession) {
+        // Required method; re-activate if needed
         WCSession.default.activate()
+    }
+
+    // MARK: - Receiving watch messages
+    func session(_ session: WCSession,
+                 didReceiveMessage message: [String : Any],
+                 replyHandler: @escaping ([String : Any]) -> Void)
+    {
+        if message["requestData"] as? Bool == true {
+            let response: [String: Any] = [
+                "gelCalories": self.gelCalories,
+                "weight": self.bodyWeight
+            ]
+            replyHandler(response)
+            print("📤 Phone sent gelCalories: \(gelCalories) cal, weight: \(bodyWeight) kg")
+        }
     }
 }

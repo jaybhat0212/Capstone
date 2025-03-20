@@ -49,9 +49,9 @@ struct MainTabView: View {
                 totalDistance: totalDistance,
                 runningSpeed: runningSpeed,
                 totalCaloriesBurned: totalCaloriesBurned,
-
-                // Pass the phone-synced gel cals to the metrics screen
-                gelServing: $healthManager.phoneGelCalories
+                gelServing: $healthManager.phoneGelCalories,
+                bodyMass: $healthManager.bodyMass,  // ✅ Pass Body Mass Binding
+                healthManager: healthManager
             )
             .tag(1)
 
