@@ -100,10 +100,9 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            // IMPORTANT: Use 'healthManager' here, not '$healthManager'
             healthManager.requestAuthorization { success in
-                // handle result if needed
             }
+            healthManager.requestDataFromPhone()
         }
     }
 

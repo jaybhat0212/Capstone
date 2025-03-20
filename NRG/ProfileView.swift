@@ -4,23 +4,99 @@ import HealthKit
 // MARK: - Data Store (unchanged)
 class ProfileStore: ObservableObject {
     private let healthStore = HKHealthStore()
+    private let userDefaults = UserDefaults.standard
     
-    // Profile Data
-    @Published var gender: String?
-    @Published var age: Int?
-    @Published var heightFeet: Int?
-    @Published var heightInches: Int?
-    @Published var weight: Int?
-    
+    @Published var gender: String? {
+        didSet {
+            userDefaults.set(gender, forKey: "gender")
+        }
+    }
+    @Published var age: Int? {
+        didSet {
+            // Only set if non-nil; remove if nil so we can differentiate
+            if let age = age {
+                userDefaults.set(age, forKey: "age")
+            } else {
+                userDefaults.removeObject(forKey: "age")
+            }
+        }
+    }
+    @Published var heightFeet: Int? {
+        didSet {
+            if let feet = heightFeet {
+                userDefaults.set(feet, forKey: "heightFeet")
+            } else {
+                userDefaults.removeObject(forKey: "heightFeet")
+            }
+        }
+    }
+    @Published var heightInches: Int? {
+        didSet {
+            if let inches = heightInches {
+                userDefaults.set(inches, forKey: "heightInches")
+            } else {
+                userDefaults.removeObject(forKey: "heightInches")
+            }
+        }
+    }
+    @Published var weight: Int? {
+        didSet {
+            if let weight = weight {
+                userDefaults.set(weight, forKey: "weight")
+            } else {
+                userDefaults.removeObject(forKey: "weight")
+            }
+        }
+    }
+
     var isProfileDataComplete: Bool {
         gender != nil && age != nil && heightFeet != nil && heightInches != nil && weight != nil
     }
-    
+
     // Gel Data
-    @Published var gelBrand: String = "Gu"
-    @Published var gelCalories: Int = 75
-    
+    @Published var gelBrand: String {
+        didSet {
+            userDefaults.set(gelBrand, forKey: "gelBrand")
+        }
+    }
+    @Published var gelCalories: Int {
+        didSet {
+            userDefaults.set(gelCalories, forKey: "gelCalories")
+        }
+    }
+
     init() {
+        // Load saved user selections from UserDefaults
+        self.gender = userDefaults.string(forKey: "gender")
+
+        if userDefaults.object(forKey: "age") != nil {
+            self.age = userDefaults.integer(forKey: "age")
+        } else {
+            self.age = nil
+        }
+        if userDefaults.object(forKey: "heightFeet") != nil {
+            self.heightFeet = userDefaults.integer(forKey: "heightFeet")
+        } else {
+            self.heightFeet = nil
+        }
+        if userDefaults.object(forKey: "heightInches") != nil {
+            self.heightInches = userDefaults.integer(forKey: "heightInches")
+        } else {
+            self.heightInches = nil
+        }
+        if userDefaults.object(forKey: "weight") != nil {
+            self.weight = userDefaults.integer(forKey: "weight")
+        } else {
+            self.weight = nil
+        }
+
+        // Gel brand defaults to "Gu" if none saved
+        self.gelBrand = userDefaults.string(forKey: "gelBrand") ?? "Gu"
+
+        // If userDefaults for "gelCalories" is 0 or missing, default to 75
+        let storedCals = userDefaults.integer(forKey: "gelCalories")
+        self.gelCalories = (storedCals == 0) ? 75 : storedCals
+
         fetchHealthKitData()
     }
     

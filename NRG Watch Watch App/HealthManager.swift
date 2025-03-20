@@ -42,25 +42,30 @@ class HealthManager: NSObject, ObservableObject, WCSessionDelegate {
     }
     
     func requestDataFromPhone() {
-        guard WCSession.default.isReachable else {
-            print("❌ Watch cannot reach phone")
+        // Make sure the watch session is valid and reachable
+        let session = WCSession.default
+        guard session.isReachable else {
+            print("Session not reachable")
             return
         }
-        
-        let message = ["requestData": true]  // Request data from phone
-        WCSession.default.sendMessage(message, replyHandler: { response in
-            DispatchQueue.main.async {
-                if let gelCals = response["gelCalories"] as? Int {
-                    self.phoneGelCalories = gelCals
-                    print("📥 Watch received gelCalories: \(gelCals) cal")
+
+        // Ask the phone for updated data
+        let message = ["requestData": true]
+        session.sendMessage(message, replyHandler: { response in
+            // Parse the phone’s response (happens immediately)
+            if let newCals = response["gelCalories"] as? Int {
+                DispatchQueue.main.async {
+                    self.phoneGelCalories = newCals
                 }
-                if let weight = response["weight"] as? Double {
-                    self.bodyMass = weight
-                    print("📥 Watch received bodyMass: \(weight) kg")
+            }
+            if let newWeight = response["weight"] as? Double {
+                DispatchQueue.main.async {
+                    // If you also store that on watch side, handle here
+                    // e.g. self.phoneWeight = newWeight
                 }
             }
         }, errorHandler: { error in
-            print("❌ Failed to request data from phone: \(error.localizedDescription)")
+            print("Failed to request data from phone: \(error.localizedDescription)")
         })
     }
 
