@@ -37,17 +37,30 @@ class HealthStoreManager: NSObject, ObservableObject, WCSessionDelegate {
         }
     }
 
-    func sendWeightToWatch() {
-        guard let session = session, session.isReachable else { return }
-        let message = ["weight": bodyWeight]
-        session.sendMessage(message, replyHandler: nil) { error in
-            print("Failed to send weight: \(error.localizedDescription)")
+    func sendAllDataToWatch() {
+        guard let session = session, session.isReachable else {
+            print("Phone: session not reachable. Can't send data to watch.")
+            return
         }
+
+        let message: [String: Any] = [
+            "weight": bodyWeight,
+            "gelCalories": gelCalories
+        ]
+
+        session.sendMessage(message, replyHandler: nil) { error in
+            print("Phone: Failed to send data: \(error.localizedDescription)")
+        }
+    }
+
+    func updateGelCaloriesOnPhone(newGelCalories: Int) {
+        self.gelCalories = newGelCalories
+        sendAllDataToWatch()
     }
 
     func updateWeightOnPhone(newWeightInKg: Double) {
         self.bodyWeight = newWeightInKg
-        sendWeightToWatch()
+        sendAllDataToWatch()
     }
 
     // MARK: - HealthKit Authorization
@@ -142,7 +155,7 @@ class HealthStoreManager: NSObject, ObservableObject, WCSessionDelegate {
             DispatchQueue.main.async {
                 self?.bodyWeight = kg
                 // Immediately send the updated weight to watch
-                self?.sendWeightToWatch()
+                self?.sendAllDataToWatch()
             }
         }
         healthStore.execute(query)
@@ -236,7 +249,6 @@ class HealthStoreManager: NSObject, ObservableObject, WCSessionDelegate {
                 "weight": self.bodyWeight
             ]
             replyHandler(response)
-            print("📤 Phone sent gelCalories: \(gelCalories) cal, weight: \(bodyWeight) kg")
         }
     }
 }
