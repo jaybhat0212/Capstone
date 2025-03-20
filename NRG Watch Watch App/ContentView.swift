@@ -228,12 +228,14 @@ struct ContentView: View {
     }
 
     func accumulateCalories() {
-        guard let vo2Rest = restingVO2, let mass = bodyMass else { return }
+        guard let vo2Rest = restingVO2 else { return }
         let speedMPerMin = (runningSpeed ?? 0) * 60
+        let weight = healthManager.bodyMass  // Use synced weight
         let vo2 = (0.2 * speedMPerMin) + (0.9 * speedMPerMin * grade) + vo2Rest
-        let litersO2PerMin = vo2 * (mass / 1000.0)
+        let litersO2PerMin = vo2 * (weight / 1000.0)
         let kcalPerMin = litersO2PerMin * 4.9
         let kcalPerSecond = kcalPerMin / 60.0
         totalCaloriesBurned += kcalPerSecond
     }
+
 }
